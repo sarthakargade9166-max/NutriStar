@@ -1,50 +1,46 @@
 {% extends "base.html" %}
 
-{% block title %}Settings — NutriStar{% endblock %}
+{% block title %}Settings - NutriStar{% endblock %}
 
 {% block content %}
-<div style="max-width: 680px; margin: 0 auto;">
-    <h1 style="font-size: 1.5rem; font-weight: 700; margin-bottom: var(--space-4);">Settings</h1>
-
-    <!-- Application Preferences -->
-    <div class="panel">
-        <div class="panel-header">
-            <span class="panel-title">Preferences</span>
-        </div>
-
-        <div class="data-row">
-            <div>
-                <div style="font-weight: 500; font-size: 0.88rem;">Theme</div>
-                <div style="font-size: 0.78rem; color: var(--text-muted);">NutriStar uses a strict monochrome dark interface.</div>
-            </div>
-            <span class="tag">Monochrome</span>
+<div class="page-container">
+    <div class="page-header">
+        <div class="header-left">
+            <h1 class="page-title">Settings</h1>
+            <p class="text-secondary">Preferences, offline storage, and data backup</p>
         </div>
     </div>
 
-    <!-- Data Reset -->
-    <div class="panel">
-        <div class="panel-header">
-            <span class="panel-title">Data Management</span>
+    <!-- Application Preferences Card -->
+    <div class="section-card">
+        <div class="section-header">
+            <span class="section-title">APPLICATION</span>
         </div>
+        <div class="settings-row">
+            <span class="text-secondary">Mode</span>
+            <span class="settings-val">Local Offline & Direct Access</span>
+        </div>
+    </div>
 
-        <div class="data-row">
-            <div>
-                <div style="font-weight: 500; font-size: 0.88rem;">Reset Application Data</div>
-                <div style="font-size: 0.78rem; color: var(--text-muted);">Permanently clear all stored meals and profile information.</div>
-            </div>
-            <button class="btn btn-secondary btn-sm" onclick="resetAppData()" style="color: #ff6b6b; border-color: #442222;">Clear Data</button>
+    <!-- Data Backup & Export -->
+    <div class="section-card">
+        <div class="section-header">
+            <span class="section-title">DATA EXPORT & BACKUP</span>
+        </div>
+        <p class="text-secondary" style="margin-bottom: 16px;">Download a full copy of your personal profile, targets, and logged meals as JSON.</p>
+        <a href="{{ url_for('routes.api_export_data') }}" class="btn btn-secondary btn-sm" download="nutristar_data.json">Export JSON Data</a>
+    </div>
+
+    <!-- Quick Links -->
+    <div class="section-card">
+        <div class="section-header">
+            <span class="section-title">QUICK ACTIONS</span>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <a href="{{ url_for('routes.profile') }}" class="btn btn-secondary btn-sm">Edit Profile & Goals</a>
+            <a href="{{ url_for('routes.history') }}" class="btn btn-secondary btn-sm">View 10-Day History</a>
+            <a href="{{ url_for('routes.log_food') }}" class="btn btn-primary btn-sm">+ Log Food</a>
         </div>
     </div>
 </div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-    function resetAppData() {
-        if (confirm('Are you sure you want to clear all data? This cannot be undone.')) {
-            Storage.clearAll();
-            window.location.href = '/onboarding';
-        }
-    }
-</script>
 {% endblock %}

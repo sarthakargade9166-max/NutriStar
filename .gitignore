@@ -1,46 +1,28 @@
-# Environment variables
-.env
-.env.*
-!.env.example
-
-# Python bytecode & cache
+# Python
 __pycache__/
-*/__pycache__/
-*/*/__pycache__/
 *.py[cod]
 *$py.class
-*.pyo
-*.pyd
+*.so
+.Python
 
-# Testing, linting & coverage
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.coverage
-htmlcov/
-.tox/
-.nox/
+# Virtual Environments
+venv/
+env/
+ENV/
+.venv/
 
-# Database & runtime files
+# Environment Variables
+.env
+.env.local
+
+# SQLite Database & Instance Folder
 instance/
-*.sqlite
 *.sqlite3
 *.db
-*.log
 
-# OS & IDE metadata
+# Logs & OS artifacts
+*.log
 .DS_Store
 Thumbs.db
-.vscode/
 .idea/
-*.swp
-*.swo
-
-# Temporary/scratch files
-scratch/
-scratches/
-tmp/
-temp/
-test-output/
-debug/
-reports/
+.vscode/

@@ -73,7 +73,6 @@ nutritrack-flask/
 ├── .env.example        # Environment variable template
 ├── .gitignore          # Repository hygiene rules
 ├── requirements.txt    # Python dependencies
-├── test_app.py         # Automated unit, integration & security test suite
 └── README.md
 ```
 

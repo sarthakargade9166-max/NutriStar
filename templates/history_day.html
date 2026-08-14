@@ -1,93 +1,47 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard - NutriStar{% endblock %}
+{% block title %}Day Details ({{ date_str }}) - NutriStar{% endblock %}
 
 {% block content %}
 <div class="page-container">
-    <!-- Header with Active Date Selector -->
-    <div class="dashboard-header">
+    <div class="page-header">
         <div class="header-left">
-            <h1 class="page-title">Dashboard</h1>
-            <p class="text-secondary">{{ active_date }}{% if active_date == ist_today %} (Today){% endif %}</p>
+            <h1 class="page-title">{{ date_str }}</h1>
+            <p class="text-secondary">Historical meal log and breakdown</p>
         </div>
-
-        <div class="date-selector">
-            <button type="button" class="btn btn-icon" id="btn-prev-day" title="Previous Day">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
-            </button>
-            <input type="date" id="active-date-input" value="{{ active_date }}" class="date-input">
-            <button type="button" class="btn btn-icon" id="btn-next-day" title="Next Day">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
-            </button>
-            {% if active_date != ist_today %}
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-today">Today</button>
-            {% endif %}
+        <div class="header-actions">
+            <a href="{{ url_for('routes.history') }}" class="btn btn-secondary btn-sm">&larr; 10-Day List</a>
+            <a href="{{ url_for('routes.log_food') }}" class="btn btn-primary btn-sm">+ Add to this Day</a>
         </div>
     </div>
 
-    <!-- Daily Nutrition Summary -->
+    <!-- Day Totals Card -->
     <div class="section-card">
         <div class="section-header">
-            <span class="section-title">DAILY NUTRITION</span>
-            <span class="text-secondary">{{ remaining_calories }} kcal remaining</span>
+            <span class="section-title">DAY TOTALS</span>
+            <span class="text-secondary">{{ totals.calories|int }} / {{ targets.calories }} kcal</span>
         </div>
 
         <div class="metrics-grid">
-            <div class="metric-card metric-primary">
-                <span class="metric-label">CALORIES</span>
-                <div class="metric-value">
-                    <span>{{ totals.calories|int }}</span>
-                    <span class="metric-target">/ {{ targets.calories }} kcal</span>
-                </div>
-                <div class="progress-bar-bg">
-                    <div class="progress-bar-fill" style="width: {{ [100, (totals.calories / targets.calories * 100)|int]|min if targets.calories > 0 else 0 }}%;"></div>
-                </div>
-            </div>
-
             <div class="metric-card">
                 <span class="metric-label">PROTEIN</span>
-                <div class="metric-value">
-                    <span>{{ totals.protein|int }}</span>
-                    <span class="metric-target">/ {{ targets.protein }} g</span>
-                </div>
-                <div class="progress-bar-bg">
-                    <div class="progress-bar-fill" style="width: {{ [100, (totals.protein / targets.protein * 100)|int]|min if targets.protein > 0 else 0 }}%;"></div>
-                </div>
+                <span class="metric-val-simple">{{ totals.protein|int }} / {{ targets.protein }}g</span>
             </div>
-
             <div class="metric-card">
                 <span class="metric-label">CARBS</span>
-                <div class="metric-value">
-                    <span>{{ totals.carbs|int }}</span>
-                    <span class="metric-target">/ {{ targets.carbs }} g</span>
-                </div>
-                <div class="progress-bar-bg">
-                    <div class="progress-bar-fill" style="width: {{ [100, (totals.carbs / targets.carbs * 100)|int]|min if targets.carbs > 0 else 0 }}%;"></div>
-                </div>
+                <span class="metric-val-simple">{{ totals.carbs|int }} / {{ targets.carbs }}g</span>
             </div>
-
             <div class="metric-card">
                 <span class="metric-label">FAT</span>
-                <div class="metric-value">
-                    <span>{{ totals.fat|int }}</span>
-                    <span class="metric-target">/ {{ targets.fat }} g</span>
-                </div>
-                <div class="progress-bar-bg">
-                    <div class="progress-bar-fill" style="width: {{ [100, (totals.fat / targets.fat * 100)|int]|min if targets.fat > 0 else 0 }}%;"></div>
-                </div>
+                <span class="metric-val-simple">{{ totals.fat|int }} / {{ targets.fat }}g</span>
             </div>
         </div>
     </div>
 
-    <!-- Meals Section -->
+    <!-- Meals for this date -->
     <div class="meals-container">
-        <div class="meals-header">
-            <h2 class="section-heading">Meals</h2>
-            <a href="{{ url_for('routes.log_food') }}" class="btn btn-primary btn-sm">+ Log Food</a>
-        </div>
-
         {% for meal_key, meal_name in [('breakfast', 'Breakfast'), ('lunch', 'Lunch'), ('snack', 'Snack'), ('dinner', 'Dinner')] %}
-        <div class="meal-card" id="meal-card-{{ meal_key }}">
+        <div class="meal-card">
             <div class="meal-header">
                 <div class="meal-title-group">
                     <span class="meal-name">{{ meal_name }}</span>
@@ -159,7 +113,6 @@
                 </select>
             </div>
 
-            <!-- Live Calculated Nutrition Preview -->
             <div class="modal-nutrition-preview" id="edit-nutrition-preview">
                 <div class="preview-metric"><span class="label">Calories</span><span class="value" id="preview-cals">0 kcal</span></div>
                 <div class="preview-metric"><span class="label">Protein</span><span class="value" id="preview-protein">0g</span></div>
@@ -177,12 +130,4 @@
         </form>
     </div>
 </div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        initDateControls();
-    });
-</script>
 {% endblock %}

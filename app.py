@@ -1,35 +1,39 @@
-"""NutriStar — Flask Application with Security Middleware"""
+"""NutriStar - Flask Application Entry Point."""
 
+import os
 from flask import Flask, jsonify, request
 from config import Config
+from database import db
 
 
-def create_app():
+def create_app(config_class=Config):
     app = Flask(__name__)
-    app.config.from_object(Config)
+    app.config.from_object(config_class)
 
-    # Security Headers Middleware
+    # Ensure instance directory exists for SQLite
+    os.makedirs(app.instance_path, exist_ok=True)
+
+    # Initialize Database
+    db.init_app(app)
+
+    # Register Routes Blueprint
+    from routes import routes
+    app.register_blueprint(routes)
+
+    # HTTP Security Headers Middleware
     @app.after_request
     def set_security_headers(response):
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['X-Frame-Options'] = 'DENY'
         response.headers['X-XSS-Protection'] = '1; mode=block'
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-        response.headers['Content-Security-Policy'] = (
-            "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-            "font-src 'self' https://fonts.gstatic.com; "
-            "img-src 'self' data:; "
-            "connect-src 'self';"
-        )
         return response
 
-    # Global Error Handlers (Prevents stack trace / internal server leaks)
+    # Global Error Handlers
     @app.errorhandler(400)
     def bad_request(e):
         if request.path.startswith('/api/'):
-            return jsonify({'error': 'Bad Request', 'message': 'Invalid input data.'}), 400
+            return jsonify({'error': 'Bad Request', 'message': 'Invalid request parameters.'}), 400
         return 'Bad Request', 400
 
     @app.errorhandler(404)
@@ -38,28 +42,19 @@ def create_app():
             return jsonify({'error': 'Not Found', 'message': 'The requested resource was not found.'}), 404
         return 'Not Found', 404
 
-    @app.errorhandler(405)
-    def method_not_allowed(e):
-        if request.path.startswith('/api/'):
-            return jsonify({'error': 'Method Not Allowed', 'message': 'HTTP method not supported for this endpoint.'}), 405
-        return 'Method Not Allowed', 405
-
     @app.errorhandler(500)
-    def internal_error(e):
+    def server_error(e):
         if request.path.startswith('/api/'):
             return jsonify({'error': 'Internal Server Error', 'message': 'An unexpected error occurred.'}), 500
         return 'Internal Server Error', 500
 
-    # Register blueprints
-    from routes.pages import pages
-    from routes.api import api
-
-    app.register_blueprint(pages)
-    app.register_blueprint(api)
+    # Auto-create tables on launch
+    with app.app_context():
+        db.create_all()
 
     return app
 
 
 if __name__ == '__main__':
     app = create_app()
-    app.run(debug=False, port=5000)
+    app.run(debug=True, port=5000)

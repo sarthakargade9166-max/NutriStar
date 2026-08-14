@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}History - NutriStar{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <div class="header-left">
+            <h1 class="page-title">10-Day History</h1>
+            <p class="text-secondary">Recent logging consistency and daily totals</p>
+        </div>
+        <a href="{{ url_for('routes.dashboard') }}" class="btn btn-secondary btn-sm">&larr; Dashboard</a>
+    </div>
+
+    <div class="history-list">
+        {% for day in history_data %}
+        <div class="history-card" onclick="location.href='{{ url_for('routes.history_day', date_str=day.date_str) }}'">
+            <div class="history-card-header">
+                <div class="history-date-group">
+                    <span class="history-date">{{ day.display }}</span>
+                    {% if day.is_today %}
+                    <span class="badge-today">Today</span>
+                    {% else %}
+                    <span class="text-secondary">{{ day.day_name }}</span>
+                    {% endif %}
+                </div>
+                <span class="history-cals">{{ day.calories|int }} / {{ day.target }} kcal</span>
+            </div>
+
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill" style="width: {{ day.pct }}%;"></div>
+            </div>
+
+            <div class="history-card-footer">
+                <span class="text-secondary">{{ day.item_count }} item{% if day.item_count != 1 %}s{% endif %}</span>
+                <div class="history-macros">
+                    <span class="macro-badge">P {{ day.protein|int }}g</span>
+                    <span class="macro-badge">C {{ day.carbs|int }}g</span>
+                    <span class="macro-badge">F {{ day.fat|int }}g</span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

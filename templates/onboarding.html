@@ -1,361 +1,64 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Setup — NutriStar</title>
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
-    <link rel="stylesheet" href="/static/css/styles.css">
-    <style>
-        body {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            background-color: var(--bg-app);
-            padding: var(--space-4);
-        }
-        .wizard-box {
-            width: 100%;
-            max-width: 480px;
-            background: var(--surface-primary);
-            border: 1px solid var(--border-default);
-            border-radius: var(--radius-md);
-            padding: var(--space-6);
-        }
-        .step-view {
-            display: none;
-        }
-        .step-view.active {
-            display: block;
-        }
-        .radio-option {
-            display: flex;
-            align-items: center;
-            gap: var(--space-3);
-            padding: var(--space-3);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-sm);
-            background: var(--surface-secondary);
-            cursor: pointer;
-            margin-bottom: var(--space-2);
-            transition: all 0.15s ease;
-        }
-        .radio-option:hover {
-            border-color: var(--border-default);
-            background: var(--surface-hover);
-        }
-        .radio-option:has(input:checked) {
-            border-color: #ffffff;
-            background: var(--surface-hover);
-        }
-        .radio-option input {
-            accent-color: #ffffff;
-        }
-    </style>
-</head>
-<body>
-    <div class="wizard-box">
-        <div class="flex justify-between items-center mb-4" style="margin-bottom: var(--space-4);">
-            <span class="brand">NutriStar</span>
-            <span id="step-indicator" style="font-size: 0.78rem; color: var(--text-muted);">Step 1 of 7</span>
-        </div>
+{% extends "base.html" %}
 
-        <div class="progress-track" style="margin-bottom: var(--space-6);">
-            <div class="progress-fill" id="wizard-progress" style="width: 14%;"></div>
-        </div>
+{% block title %}Onboarding - NutriStar{% endblock %}
 
-        <form onsubmit="event.preventDefault();">
-            <!-- Step 1: Name -->
-            <div class="step-view active" id="step-1">
-                <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: var(--space-1);">Your Name</h2>
-                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: var(--space-5);">Enter your name to set up your local profile.</p>
-
-                <input type="text" class="input" id="ob-name" placeholder="Name" autofocus required style="margin-bottom: var(--space-6);">
-
-                <div class="flex justify-end">
-                    <button type="button" class="btn btn-primary" onclick="nextStep(2)">Next →</button>
-                </div>
-            </div>
-
-            <!-- Step 2: Age & Sex -->
-            <div class="step-view" id="step-2">
-                <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: var(--space-1);">Age & Biological Sex</h2>
-                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: var(--space-5);">Used for Mifflin-St Jeor metabolic calculations.</p>
-
-                <div style="margin-bottom: var(--space-4);">
-                    <label style="font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: var(--space-1);">Age (years)</label>
-                    <input type="number" class="input" id="ob-age" value="25" min="10" max="110" required>
-                </div>
-
-                <div style="margin-bottom: var(--space-6);">
-                    <label style="font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: var(--space-1);">Sex</label>
-                    <label class="radio-option">
-                        <input type="radio" name="ob-sex" value="male" checked>
-                        <span style="font-size: 0.88rem; font-weight: 500;">Male</span>
-                    </label>
-                    <label class="radio-option">
-                        <input type="radio" name="ob-sex" value="female">
-                        <span style="font-size: 0.88rem; font-weight: 500;">Female</span>
-                    </label>
-                </div>
-
-                <div class="flex justify-between">
-                    <button type="button" class="btn btn-secondary" onclick="nextStep(1)">Back</button>
-                    <button type="button" class="btn btn-primary" onclick="nextStep(3)">Next →</button>
-                </div>
-            </div>
-
-            <!-- Step 3: Height & Weight -->
-            <div class="step-view" id="step-3">
-                <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: var(--space-1);">Height & Weight</h2>
-                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: var(--space-5);">Measurements for Basal Metabolic Rate.</p>
-
-                <div style="margin-bottom: var(--space-4);">
-                    <label style="font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: var(--space-1);">Height (cm)</label>
-                    <input type="number" class="input" id="ob-height" value="172" min="80" max="250" required>
-                </div>
-
-                <div style="margin-bottom: var(--space-6);">
-                    <label style="font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: var(--space-1);">Weight (kg)</label>
-                    <input type="number" class="input" id="ob-weight" value="70" step="0.5" min="25" max="300" required>
-                </div>
-
-                <div class="flex justify-between">
-                    <button type="button" class="btn btn-secondary" onclick="nextStep(2)">Back</button>
-                    <button type="button" class="btn btn-primary" onclick="nextStep(4)">Next →</button>
-                </div>
-            </div>
-
-            <!-- Step 4: Activity Level -->
-            <div class="step-view" id="step-4">
-                <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: var(--space-1);">Activity Level</h2>
-                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: var(--space-5);">Select your typical weekly physical exertion.</p>
-
-                <div style="margin-bottom: var(--space-6);">
-                    <label class="radio-option">
-                        <input type="radio" name="ob-activity" value="sedentary" checked>
-                        <div>
-                            <div style="font-weight: 500; font-size: 0.88rem;">Sedentary</div>
-                            <small>Little to no exercise, desk work</small>
-                        </div>
-                    </label>
-                    <label class="radio-option">
-                        <input type="radio" name="ob-activity" value="light">
-                        <div>
-                            <div style="font-weight: 500; font-size: 0.88rem;">Light</div>
-                            <small>Light exercise 1-3 days per week</small>
-                        </div>
-                    </label>
-                    <label class="radio-option">
-                        <input type="radio" name="ob-activity" value="moderate">
-                        <div>
-                            <div style="font-weight: 500; font-size: 0.88rem;">Moderate</div>
-                            <small>Moderate exercise 3-5 days per week</small>
-                        </div>
-                    </label>
-                    <label class="radio-option">
-                        <input type="radio" name="ob-activity" value="active">
-                        <div>
-                            <div style="font-weight: 500; font-size: 0.88rem;">Active</div>
-                            <small>Heavy training / sports 6-7 days per week</small>
-                        </div>
-                    </label>
-                </div>
-
-                <div class="flex justify-between">
-                    <button type="button" class="btn btn-secondary" onclick="nextStep(3)">Back</button>
-                    <button type="button" class="btn btn-primary" onclick="nextStep(5)">Next →</button>
-                </div>
-            </div>
-
-            <!-- Step 5: Primary Goal -->
-            <div class="step-view" id="step-5">
-                <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: var(--space-1);">Primary Goal</h2>
-                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: var(--space-5);">Determines calorie deficit or surplus.</p>
-
-                <div style="margin-bottom: var(--space-6);">
-                    <label class="radio-option">
-                        <input type="radio" name="ob-goal" value="lose">
-                        <div>
-                            <div style="font-weight: 500; font-size: 0.88rem;">Lose Weight</div>
-                            <small>-500 kcal deficit</small>
-                        </div>
-                    </label>
-                    <label class="radio-option">
-                        <input type="radio" name="ob-goal" value="maintain" checked>
-                        <div>
-                            <div style="font-weight: 500; font-size: 0.88rem;">Maintain Weight</div>
-                            <small>Energy balance</small>
-                        </div>
-                    </label>
-                    <label class="radio-option">
-                        <input type="radio" name="ob-goal" value="muscle">
-                        <div>
-                            <div style="font-weight: 500; font-size: 0.88rem;">Build Muscle</div>
-                            <small>+200 kcal lean surplus · high protein</small>
-                        </div>
-                    </label>
-                    <label class="radio-option">
-                        <input type="radio" name="ob-goal" value="gain">
-                        <div>
-                            <div style="font-weight: 500; font-size: 0.88rem;">Gain Weight</div>
-                            <small>+300 kcal surplus</small>
-                        </div>
-                    </label>
-                </div>
-
-                <div class="flex justify-between">
-                    <button type="button" class="btn btn-secondary" onclick="nextStep(4)">Back</button>
-                    <button type="button" class="btn btn-primary" onclick="nextStep(6)">Next →</button>
-                </div>
-            </div>
-
-            <!-- Step 6: Diet -->
-            <div class="step-view" id="step-6">
-                <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: var(--space-1);">Dietary Preference</h2>
-                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: var(--space-5);">Select your primary diet preference.</p>
-
-                <div style="margin-bottom: var(--space-6);">
-                    <label class="radio-option">
-                        <input type="radio" name="ob-diet" value="vegetarian" checked>
-                        <span style="font-weight: 500; font-size: 0.88rem;">Vegetarian</span>
-                    </label>
-                    <label class="radio-option">
-                        <input type="radio" name="ob-diet" value="eggetarian">
-                        <span style="font-weight: 500; font-size: 0.88rem;">Eggetarian</span>
-                    </label>
-                    <label class="radio-option">
-                        <input type="radio" name="ob-diet" value="non_vegetarian">
-                        <span style="font-weight: 500; font-size: 0.88rem;">Non-Vegetarian</span>
-                    </label>
-                    <label class="radio-option">
-                        <input type="radio" name="ob-diet" value="vegan">
-                        <span style="font-weight: 500; font-size: 0.88rem;">Vegan</span>
-                    </label>
-                </div>
-
-                <div class="flex justify-between">
-                    <button type="button" class="btn btn-secondary" onclick="nextStep(5)">Back</button>
-                    <button type="button" class="btn btn-primary" onclick="calculatePlan()">Calculate Plan →</button>
-                </div>
-            </div>
-
-            <!-- Step 7: Calculated Plan Review -->
-            <div class="step-view" id="step-7">
-                <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: var(--space-1);">Calculated Nutrition Plan</h2>
-                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: var(--space-5);">Review your daily targets before proceeding.</p>
-
-                <div style="background: var(--surface-secondary); border: 1px solid var(--border-default); border-radius: var(--radius-sm); padding: var(--space-4); margin-bottom: var(--space-6);">
-                    <div style="text-align: center; margin-bottom: var(--space-4);">
-                        <div style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase;">Daily Calories</div>
-                        <div style="font-size: 1.75rem; font-weight: 700; color: var(--text-primary);" id="calc-res-cals">2,100 kcal</div>
-                    </div>
-
-                    <div class="flex justify-between" style="border-top: 1px solid var(--border-subtle); padding-top: var(--space-3); text-align: center;">
-                        <div style="flex: 1;">
-                            <div style="font-size: 0.75rem; color: var(--text-muted);">Protein</div>
-                            <div style="font-weight: 600; font-size: 0.95rem;" id="calc-res-pro">120 g</div>
-                        </div>
-                        <div style="flex: 1;">
-                            <div style="font-size: 0.75rem; color: var(--text-muted);">Carbs</div>
-                            <div style="font-weight: 600; font-size: 0.95rem;" id="calc-res-carbs">240 g</div>
-                        </div>
-                        <div style="flex: 1;">
-                            <div style="font-size: 0.75rem; color: var(--text-muted);">Fat</div>
-                            <div style="font-weight: 600; font-size: 0.95rem;" id="calc-res-fat">60 g</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="flex justify-between">
-                    <button type="button" class="btn btn-secondary" onclick="nextStep(6)">Back</button>
-                    <button type="button" class="btn btn-primary" onclick="finishSetup()">Start Tracking</button>
-                </div>
-            </div>
-        </form>
+{% block content %}
+<div class="auth-card" style="max-width: 540px;">
+    <div class="auth-header">
+        <h1 class="brand-title">Welcome to NutriStar</h1>
+        <p class="auth-subtitle">Set up your biometrics and daily macro targets</p>
     </div>
 
-    <script src="/static/js/app.js"></script>
-    <script>
-        let computedTargets = null;
+    <form method="POST" action="{{ url_for('routes.onboarding') }}" class="profile-form">
+        <div class="form-row">
+            <div class="form-group flex-1">
+                <label for="name">Your Name</label>
+                <input type="text" id="name" name="name" value="{{ profile.name if profile else 'User' }}" required class="input-field">
+            </div>
+            <div class="form-group flex-1">
+                <label for="age">Age</label>
+                <input type="number" id="age" name="age" value="{{ profile.age if profile else 25 }}" required min="10" max="120" class="input-field">
+            </div>
+            <div class="form-group flex-1">
+                <label for="gender">Sex</label>
+                <select id="gender" name="gender" class="select-field">
+                    <option value="male" selected>Male</option>
+                    <option value="female">Female</option>
+                </select>
+            </div>
+        </div>
 
-        function nextStep(step) {
-            if (step === 2 && !document.getElementById('ob-name').value.trim()) {
-                showToast('Please enter your name');
-                return;
-            }
+        <div class="form-row">
+            <div class="form-group flex-1">
+                <label for="height_cm">Height (cm)</label>
+                <input type="number" id="height_cm" name="height_cm" value="{{ profile.height_cm|int if profile else 175 }}" required min="100" max="250" class="input-field">
+            </div>
+            <div class="form-group flex-1">
+                <label for="current_weight_kg">Current Weight (kg)</label>
+                <input type="number" id="current_weight_kg" name="current_weight_kg" value="{{ profile.current_weight_kg if profile else 70 }}" step="0.1" required class="input-field">
+            </div>
+            <div class="form-group flex-1">
+                <label for="target_weight_kg">Target Weight (kg)</label>
+                <input type="number" id="target_weight_kg" name="target_weight_kg" value="{{ profile.target_weight_kg if profile else 70 }}" step="0.1" required class="input-field">
+            </div>
+        </div>
 
-            document.querySelectorAll('.step-view').forEach(s => s.classList.remove('active'));
-            document.getElementById(`step-${step}`).classList.add('active');
+        <div class="form-group">
+            <label for="activity_level">Activity Level</label>
+            <select id="activity_level" name="activity_level" class="select-field">
+                <option value="sedentary">Sedentary (Little or no exercise)</option>
+                <option value="light">Light (Exercise 1-3 days/week)</option>
+                <option value="moderate" selected>Moderate (Exercise 3-5 days/week)</option>
+                <option value="very_active">Very Active (Exercise 6-7 days/week)</option>
+            </select>
+        </div>
 
-            document.getElementById('wizard-progress').style.width = `${(step / 7) * 100}%`;
-            document.getElementById('step-indicator').textContent = `Step ${step} of 7`;
-        }
+        <div class="form-group">
+            <label for="target_rate_kg_per_week">Target Rate (kg/week)</label>
+            <input type="number" id="target_rate_kg_per_week" name="target_rate_kg_per_week" value="0.5" step="0.1" min="0.1" max="1.5" class="input-field">
+        </div>
 
-        async function calculatePlan() {
-            const profile = {
-                name: document.getElementById('ob-name').value.trim() || 'User',
-                age: parseInt(document.getElementById('ob-age').value) || 25,
-                sex: document.querySelector('input[name="ob-sex"]:checked').value,
-                height: parseFloat(document.getElementById('ob-height').value) || 170,
-                weight: parseFloat(document.getElementById('ob-weight').value) || 70,
-                activity: document.querySelector('input[name="ob-activity"]:checked').value,
-                goal: document.querySelector('input[name="ob-goal"]:checked').value,
-                diet: document.querySelector('input[name="ob-diet"]:checked').value
-            };
-
-            try {
-                const res = await fetch('/api/targets', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(profile)
-                });
-                computedTargets = await res.json();
-            } catch (e) {
-                const w = profile.weight;
-                const cals = Math.round(w * 22 * 1.4);
-                computedTargets = {
-                    calories: cals,
-                    calories_kcal: cals,
-                    protein: Math.round(w * 1.4),
-                    protein_g: Math.round(w * 1.4),
-                    carbs: Math.round((cals * 0.5) / 4),
-                    carbs_g: Math.round((cals * 0.5) / 4),
-                    fat: Math.round((cals * 0.25) / 9),
-                    fat_g: Math.round((cals * 0.25) / 9)
-                };
-            }
-
-            document.getElementById('calc-res-cals').textContent = `${(computedTargets.calories || computedTargets.calories_kcal).toLocaleString()} kcal`;
-            document.getElementById('calc-res-pro').textContent = `${computedTargets.protein || computedTargets.protein_g} g`;
-            document.getElementById('calc-res-carbs').textContent = `${computedTargets.carbs || computedTargets.carbs_g} g`;
-            document.getElementById('calc-res-fat').textContent = `${computedTargets.fat || computedTargets.fat_g} g`;
-
-            nextStep(7);
-        }
-
-        function finishSetup() {
-            const profile = {
-                name: document.getElementById('ob-name').value.trim() || 'User',
-                age: parseInt(document.getElementById('ob-age').value) || 25,
-                sex: document.querySelector('input[name="ob-sex"]:checked').value,
-                height: parseFloat(document.getElementById('ob-height').value) || 170,
-                weight: parseFloat(document.getElementById('ob-weight').value) || 70,
-                activity: document.querySelector('input[name="ob-activity"]:checked').value,
-                goal: document.querySelector('input[name="ob-goal"]:checked').value,
-                diet: document.querySelector('input[name="ob-diet"]:checked').value
-            };
-
-            Storage.saveProfile(profile);
-            Storage.saveTargets(computedTargets);
-
-            window.location.href = '/dashboard';
-        }
-    </script>
-</body>
-</html>
+        <button type="submit" class="btn btn-primary btn-block">Complete Setup & Go to Dashboard</button>
+    </form>
+</div>
+{% endblock %}

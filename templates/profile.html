@@ -1,225 +1,114 @@
 {% extends "base.html" %}
 
-{% block title %}Profile — NutriStar{% endblock %}
+{% block title %}Profile & Goals - NutriStar{% endblock %}
 
 {% block content %}
-<div style="max-width: 680px; margin: 0 auto;">
-    <h1 style="font-size: 1.5rem; font-weight: 700; margin-bottom: var(--space-4);">Profile</h1>
-
-    <!-- Personal Information Panel -->
-    <div class="panel">
-        <div class="panel-header">
-            <span class="panel-title">Personal Information</span>
-            <a href="/onboarding" class="btn btn-ghost btn-sm" style="font-size: 0.8rem;">Edit Setup</a>
-        </div>
-
-        <div class="data-row">
-            <span style="color: var(--text-muted); font-size: 0.88rem;">Name</span>
-            <span style="font-weight: 500; font-size: 0.9rem;" id="prof-name">—</span>
-        </div>
-        <div class="data-row">
-            <span style="color: var(--text-muted); font-size: 0.88rem;">Age & Sex</span>
-            <span style="font-weight: 500; font-size: 0.9rem;" id="prof-age-sex">—</span>
-        </div>
-        <div class="data-row">
-            <span style="color: var(--text-muted); font-size: 0.88rem;">Height & Weight</span>
-            <span style="font-weight: 500; font-size: 0.9rem;" id="prof-height-weight">—</span>
-        </div>
-        <div class="data-row">
-            <span style="color: var(--text-muted); font-size: 0.88rem;">Body Mass Index (BMI)</span>
-            <span style="font-weight: 600; font-size: 0.9rem;" id="prof-bmi">—</span>
-        </div>
-        <div class="data-row">
-            <span style="color: var(--text-muted); font-size: 0.88rem;">Goal</span>
-            <span style="font-weight: 500; font-size: 0.9rem; text-transform: capitalize;" id="prof-goal">—</span>
+<div class="page-container">
+    <div class="page-header">
+        <div class="header-left">
+            <h1 class="page-title">Profile & Goals</h1>
+            <p class="text-secondary">Manage your biometrics and daily macro targets</p>
         </div>
     </div>
 
-    <!-- Nutrition Targets Panel -->
-    <div class="panel">
-        <div class="panel-header">
-            <span class="panel-title">Daily Nutrition Targets</span>
-            <button class="btn btn-ghost btn-sm" onclick="recalculateTargets()">Auto-Calculate</button>
+    <!-- Active Targets Card -->
+    <div class="section-card">
+        <div class="section-header">
+            <span class="section-title">ACTIVE DAILY TARGETS</span>
+            <span class="text-secondary">{{ profile.goal_type|upper }}</span>
         </div>
 
-        <div class="grid-2 gap-3 mb-3" style="margin-top: var(--space-2); margin-bottom: var(--space-3);">
-            <div>
-                <label style="font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: var(--space-1);">Calories (kcal)</label>
-                <input type="number" id="input-target-cals" class="input" style="font-weight: 600;">
+        <div class="metrics-grid">
+            <div class="metric-card metric-primary">
+                <span class="metric-label">CALORIES</span>
+                <span class="metric-val-simple">{{ profile.calorie_target }} kcal</span>
             </div>
-            <div>
-                <label style="font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: var(--space-1);">Protein (g)</label>
-                <input type="number" id="input-target-pro" class="input" style="font-weight: 600;">
+            <div class="metric-card">
+                <span class="metric-label">PROTEIN</span>
+                <span class="metric-val-simple">{{ profile.protein_target }} g</span>
             </div>
-            <div>
-                <label style="font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: var(--space-1);">Carbohydrates (g)</label>
-                <input type="number" id="input-target-carbs" class="input" style="font-weight: 600;">
+            <div class="metric-card">
+                <span class="metric-label">CARBS</span>
+                <span class="metric-val-simple">{{ profile.carbs_target }} g</span>
             </div>
-            <div>
-                <label style="font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: var(--space-1);">Fat (g)</label>
-                <input type="number" id="input-target-fat" class="input" style="font-weight: 600;">
+            <div class="metric-card">
+                <span class="metric-label">FAT</span>
+                <span class="metric-val-simple">{{ profile.fat_target }} g</span>
             </div>
-        </div>
-
-        <div class="flex justify-end">
-            <button class="btn btn-primary btn-sm" onclick="saveTargetEdits()">Save Targets</button>
         </div>
     </div>
 
-    <!-- Data & Account Panel -->
-    <div class="panel">
-        <div class="panel-header">
-            <span class="panel-title">Data & Backup</span>
+    <!-- Profile Edit Form -->
+    <div class="section-card">
+        <div class="section-header">
+            <span class="section-title">BIOMETRIC SETTINGS</span>
         </div>
 
-        <div class="data-row">
-            <div>
-                <div style="font-weight: 500; font-size: 0.88rem;">Export Food Logs</div>
-                <div style="font-size: 0.78rem; color: var(--text-muted);">Download a local JSON backup of your records.</div>
+        <form method="POST" action="{{ url_for('routes.profile') }}" class="profile-form" id="profile-form">
+            <div class="form-row">
+                <div class="form-group flex-1">
+                    <label for="name">Name</label>
+                    <input type="text" id="name" name="name" value="{{ profile.name }}" required class="input-field">
+                </div>
+                <div class="form-group flex-1">
+                    <label for="age">Age</label>
+                    <input type="number" id="age" name="age" value="{{ profile.age }}" required min="10" max="120" class="input-field">
+                </div>
+                <div class="form-group flex-1">
+                    <label for="gender">Sex</label>
+                    <select id="gender" name="gender" class="select-field">
+                        <option value="male" {% if profile.gender == 'male' %}selected{% endif %}>Male</option>
+                        <option value="female" {% if profile.gender == 'female' %}selected{% endif %}>Female</option>
+                    </select>
+                </div>
             </div>
-            <button class="btn btn-secondary btn-sm" onclick="exportData()">Export</button>
-        </div>
 
-        <div class="data-row">
-            <div>
-                <div style="font-weight: 500; font-size: 0.88rem;">Restore Backup</div>
-                <div style="font-size: 0.78rem; color: var(--text-muted);">Import a previously exported JSON backup.</div>
+            <div class="form-row">
+                <div class="form-group flex-1">
+                    <label for="height_cm">Height (cm)</label>
+                    <input type="number" id="height_cm" name="height_cm" value="{{ profile.height_cm|int }}" required min="100" max="250" class="input-field">
+                </div>
+                <div class="form-group flex-1">
+                    <label for="current_weight_kg">Current Weight (kg)</label>
+                    <input type="number" id="current_weight_kg" name="current_weight_kg" value="{{ profile.current_weight_kg }}" step="0.1" required class="input-field">
+                </div>
+                <div class="form-group flex-1">
+                    <label for="target_weight_kg">Target Weight (kg)</label>
+                    <input type="number" id="target_weight_kg" name="target_weight_kg" value="{{ profile.target_weight_kg }}" step="0.1" required class="input-field">
+                </div>
             </div>
-            <label class="btn btn-secondary btn-sm" style="cursor: pointer;">
-                Import
-                <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importData(event)">
-            </label>
-        </div>
 
-        <div class="data-row">
-            <div>
-                <div style="font-weight: 500; font-size: 0.88rem;">Clear All Data</div>
-                <div style="font-size: 0.78rem; color: var(--text-muted);">Wipe all local stored logs and reset profile.</div>
+            <div class="form-group">
+                <label for="activity_level">Daily Activity Level</label>
+                <select id="activity_level" name="activity_level" class="select-field">
+                    <option value="sedentary" {% if profile.activity_level == 'sedentary' %}selected{% endif %}>Sedentary (Little or no exercise)</option>
+                    <option value="light" {% if profile.activity_level == 'light' %}selected{% endif %}>Light (Exercise 1-3 days/week)</option>
+                    <option value="moderate" {% if profile.activity_level == 'moderate' %}selected{% endif %}>Moderate (Exercise 3-5 days/week)</option>
+                    <option value="very_active" {% if profile.activity_level == 'very_active' %}selected{% endif %}>Very Active (Hard exercise 6-7 days/week)</option>
+                    <option value="extra_active" {% if profile.activity_level == 'extra_active' %}selected{% endif %}>Extra Active (Physical labor or intense training)</option>
+                </select>
             </div>
-            <button class="btn btn-secondary btn-sm" onclick="clearData()" style="color: #ff6b6b; border-color: #442222;">Reset</button>
-        </div>
+
+            <div class="form-row">
+                <div class="form-group flex-1">
+                    <label for="goal_control_mode">Pacing Strategy</label>
+                    <select id="goal_control_mode" name="goal_control_mode" class="select-field">
+                        <option value="rate" {% if profile.goal_control_mode == 'rate' %}selected{% endif %}>Weekly Weight Rate (kg/week)</option>
+                        <option value="timeline" {% if profile.goal_control_mode == 'timeline' %}selected{% endif %}>Target Timeline (weeks)</option>
+                    </select>
+                </div>
+                <div class="form-group flex-1">
+                    <label for="target_rate_kg_per_week">Target Rate (kg/week)</label>
+                    <input type="number" id="target_rate_kg_per_week" name="target_rate_kg_per_week" value="{{ profile.target_rate_kg_per_week }}" step="0.1" min="0.1" max="1.5" class="input-field">
+                </div>
+                <div class="form-group flex-1">
+                    <label for="target_weeks">Target Timeline (weeks)</label>
+                    <input type="number" id="target_weeks" name="target_weeks" value="{{ profile.target_weeks }}" min="1" max="52" class="input-field">
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Save & Recalculate Targets</button>
+        </form>
     </div>
 </div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        loadProfileInfo();
-    });
-
-    function loadProfileInfo() {
-        const profile = Storage.getProfile();
-        const targets = Storage.getTargets() || { calories: 2000, protein: 120, carbs: 250, fat: 65 };
-
-        if (profile) {
-            document.getElementById('prof-name').textContent = profile.name || 'User';
-            const sexStr = profile.sex ? profile.sex.charAt(0).toUpperCase() + profile.sex.slice(1) : 'Male';
-            document.getElementById('prof-age-sex').textContent = `${profile.age || 25} years · ${sexStr}`;
-            document.getElementById('prof-height-weight').textContent = `${profile.height || 170} cm · ${profile.weight || 70} kg`;
-            document.getElementById('prof-goal').textContent = profile.goal || 'Maintain';
-
-            // Calculate BMI
-            const h = (Number(profile.height) || 170) / 100;
-            const w = Number(profile.weight) || 70;
-            const bmi = (w / (h * h)).toFixed(1);
-            let status = 'Normal';
-            if (bmi < 18.5) status = 'Underweight';
-            else if (bmi >= 25 && bmi < 30) status = 'Overweight';
-            else if (bmi >= 30) status = 'Obese';
-            document.getElementById('prof-bmi').textContent = `${bmi} (${status})`;
-        }
-
-        document.getElementById('input-target-cals').value = targets.calories || targets.calories_kcal || 2000;
-        document.getElementById('input-target-pro').value = targets.protein || targets.protein_g || 120;
-        document.getElementById('input-target-carbs').value = targets.carbs || targets.carbs_g || 250;
-        document.getElementById('input-target-fat').value = targets.fat || targets.fat_g || 65;
-    }
-
-    async function recalculateTargets() {
-        const profile = Storage.getProfile();
-        if (!profile) return;
-
-        try {
-            const res = await fetch('/api/targets', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(profile)
-            });
-            const calculated = await res.json();
-            Storage.saveTargets(calculated);
-            loadProfileInfo();
-            showToast('Targets recalculated');
-        } catch (e) {
-            showToast('Failed to calculate targets');
-        }
-    }
-
-    function saveTargetEdits() {
-        const cals = parseInt(document.getElementById('input-target-cals').value) || 2000;
-        const pro = parseInt(document.getElementById('input-target-pro').value) || 120;
-        const carbs = parseInt(document.getElementById('input-target-carbs').value) || 250;
-        const fat = parseInt(document.getElementById('input-target-fat').value) || 65;
-
-        const updated = {
-            calories: cals,
-            calories_kcal: cals,
-            protein: pro,
-            protein_g: pro,
-            carbs: carbs,
-            carbs_g: carbs,
-            fat: fat,
-            fat_g: fat,
-            fiber: Math.round((cals / 1000) * 14)
-        };
-
-        Storage.saveTargets(updated);
-        showToast('Targets saved');
-    }
-
-    function exportData() {
-        const payload = {
-            profile: Storage.getProfile(),
-            targets: Storage.getTargets(),
-            logs: Storage.getAllMealLogs(),
-            timestamp: new Date().toISOString()
-        };
-        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `nutristar_backup_${Storage.getTodayDateString()}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-        showToast('Backup downloaded');
-    }
-
-    function importData(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            try {
-                const data = JSON.parse(event.target.result);
-                if (data.profile) Storage.saveProfile(data.profile);
-                if (data.targets) Storage.saveTargets(data.targets);
-                if (data.logs) localStorage.setItem('nt_meal_logs', JSON.stringify(data.logs));
-
-                showToast('Backup restored');
-                setTimeout(() => location.reload(), 500);
-            } catch (err) {
-                showToast('Invalid backup file');
-            }
-        };
-        reader.readAsText(file);
-    }
-
-    function clearData() {
-        if (confirm('Reset all local data? This action cannot be undone.')) {
-            Storage.clearAll();
-            window.location.href = '/onboarding';
-        }
-    }
-</script>
 {% endblock %}
