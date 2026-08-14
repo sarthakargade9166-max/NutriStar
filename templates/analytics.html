@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics — NutriTrack{% endblock %}
+
+{% block content %}
+<div style="max-width: 760px; margin: 0 auto;">
+    <div class="flex justify-between items-center mb-4" style="margin-bottom: var(--space-4);">
+        <div>
+            <h1 style="font-size: 1.5rem; font-weight: 700; margin: 0;">Analytics</h1>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 2px;">Nutrition intake trends and averages</p>
+        </div>
+
+        <div class="flex gap-1" style="background: var(--surface-primary); border: 1px solid var(--border-default); border-radius: var(--radius-sm); padding: 2px;">
+            <button class="btn btn-sm" id="btn-period-7" onclick="setPeriod(7)" style="background: #ffffff; color: #000000;">7 Days</button>
+            <button class="btn btn-ghost btn-sm" id="btn-period-14" onclick="setPeriod(14)">14 Days</button>
+            <button class="btn btn-ghost btn-sm" id="btn-period-30" onclick="setPeriod(30)">30 Days</button>
+        </div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="grid-4 mb-4" style="margin-bottom: var(--space-4);">
+        <div class="panel" style="margin-bottom: 0; text-align: center; padding: var(--space-3);">
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Avg Calories</div>
+            <div style="font-size: 1.35rem; font-weight: 700; color: var(--text-primary); margin-top: 2px;" id="stat-avg-cals">0</div>
+        </div>
+        <div class="panel" style="margin-bottom: 0; text-align: center; padding: var(--space-3);">
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Avg Protein</div>
+            <div style="font-size: 1.35rem; font-weight: 700; color: var(--text-primary); margin-top: 2px;" id="stat-avg-pro">0 g</div>
+        </div>
+        <div class="panel" style="margin-bottom: 0; text-align: center; padding: var(--space-3);">
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Avg Carbs</div>
+            <div style="font-size: 1.35rem; font-weight: 700; color: var(--text-primary); margin-top: 2px;" id="stat-avg-carbs">0 g</div>
+        </div>
+        <div class="panel" style="margin-bottom: 0; text-align: center; padding: var(--space-3);">
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Avg Fat</div>
+            <div style="font-size: 1.35rem; font-weight: 700; color: var(--text-primary); margin-top: 2px;" id="stat-avg-fat">0 g</div>
+        </div>
+    </div>
+
+    <!-- Calorie Chart -->
+    <div class="panel">
+        <div class="panel-header">
+            <span class="panel-title">Daily Calorie Intake</span>
+            <span id="chart-target-ref" style="font-size: 0.8rem; color: var(--text-muted);">Target: 2,000 kcal</span>
+        </div>
+
+        <div id="analytics-chart-container" style="height: 180px; width: 100%; display: flex; align-items: flex-end; gap: 8px; padding-top: 20px;">
+            <!-- Bars rendered by JS -->
+        </div>
+        <div class="flex justify-between text-xs" style="color: var(--text-muted); margin-top: var(--space-2);">
+            <span id="chart-start-date">Start</span>
+            <span id="chart-end-date">Today</span>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let activePeriod = 7;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        setPeriod(7);
+    });
+
+    function setPeriod(days) {
+        activePeriod = days;
+        [7, 14, 30].forEach(d => {
+            const btn = document.getElementById(`btn-period-${d}`);
+            if (btn) {
+                if (d === days) {
+                    btn.style.background = '#ffffff';
+                    btn.style.color = '#000000';
+                    btn.classList.remove('btn-ghost');
+                } else {
+                    btn.style.background = 'transparent';
+                    btn.style.color = 'var(--text-secondary)';
+                    btn.classList.add('btn-ghost');
+                }
+            }
+        });
+        renderAnalytics(days);
+    }
+
+    function renderAnalytics(days) {
+        const allLogs = Storage.getAllMealLogs();
+        const targets = Storage.getTargets() || { calories: 2000 };
+        const tgtCals = targets.calories || targets.calories_kcal || 2000;
+
+        document.getElementById('chart-target-ref').textContent = `Target: ${tgtCals.toLocaleString()} kcal`;
+
+        const today = new Date();
+        const data = [];
+        let sumCals = 0, sumPro = 0, sumCarbs = 0, sumFat = 0;
+        let trackedDays = 0;
+
+        for (let i = days - 1; i >= 0; i--) {
+            const d = new Date(today);
+            d.setDate(d.getDate() - i);
+            const dateStr = d.toISOString().split('T')[0];
+            const logs = allLogs[dateStr] || { breakfast: [], lunch: [], snack: [], dinner: [] };
+            const totals = calculateTotals(logs);
+
+            if (totals.calories > 0) {
+                trackedDays++;
+                sumCals += totals.calories;
+                sumPro += totals.protein;
+                sumCarbs += totals.carbs;
+                sumFat += totals.fat;
+            }
+
+            data.push({ date: dateStr, calories: totals.calories });
+        }
+
+        const avgCals = trackedDays > 0 ? Math.round(sumCals / trackedDays) : 0;
+        const avgPro = trackedDays > 0 ? Math.round(sumPro / trackedDays) : 0;
+        const avgCarbs = trackedDays > 0 ? Math.round(sumCarbs / trackedDays) : 0;
+        const avgFat = trackedDays > 0 ? Math.round(sumFat / trackedDays) : 0;
+
+        document.getElementById('stat-avg-cals').textContent = avgCals.toLocaleString();
+        document.getElementById('stat-avg-pro').textContent = `${avgPro} g`;
+        document.getElementById('stat-avg-carbs').textContent = `${avgCarbs} g`;
+        document.getElementById('stat-avg-fat').textContent = `${avgFat} g`;
+
+        document.getElementById('chart-start-date').textContent = Storage.formatDateDisplay(data[0].date);
+        document.getElementById('chart-end-date').textContent = Storage.formatDateDisplay(data[data.length - 1].date);
+
+        const container = document.getElementById('analytics-chart-container');
+        const maxVal = Math.max(...data.map(d => d.calories), tgtCals, 2200);
+
+        container.innerHTML = data.map(d => {
+            const heightPct = Math.min((d.calories / maxVal) * 100, 100);
+            const barBg = d.calories === 0 ? 'var(--surface-tertiary)' : (d.calories > tgtCals ? '#ffffff' : '#a0a0a0');
+            return `
+                <div style="flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center;" title="${d.date}: ${d.calories} kcal">
+                    <div style="width: 100%; max-width: 24px; height: ${Math.max(heightPct, 4)}%; background: ${barBg}; border-radius: 2px 2px 0 0;"></div>
+                    <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 4px;">${d.date.slice(8)}</div>
+                </div>
+            `;
+        }).join('');
+    }
+</script>
+{% endblock %}

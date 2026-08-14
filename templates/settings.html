@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Settings — NutriTrack{% endblock %}
+
+{% block content %}
+<div style="max-width: 680px; margin: 0 auto;">
+    <h1 style="font-size: 1.5rem; font-weight: 700; margin-bottom: var(--space-4);">Settings</h1>
+
+    <!-- Application Preferences -->
+    <div class="panel">
+        <div class="panel-header">
+            <span class="panel-title">Preferences</span>
+        </div>
+
+        <div class="data-row">
+            <div>
+                <div style="font-weight: 500; font-size: 0.88rem;">Theme</div>
+                <div style="font-size: 0.78rem; color: var(--text-muted);">NutriTrack uses a strict monochrome dark interface.</div>
+            </div>
+            <span class="tag">Monochrome</span>
+        </div>
+    </div>
+
+    <!-- Data Reset -->
+    <div class="panel">
+        <div class="panel-header">
+            <span class="panel-title">Data Management</span>
+        </div>
+
+        <div class="data-row">
+            <div>
+                <div style="font-weight: 500; font-size: 0.88rem;">Reset Application Data</div>
+                <div style="font-size: 0.78rem; color: var(--text-muted);">Permanently clear all stored meals and profile information.</div>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="resetAppData()" style="color: #ff6b6b; border-color: #442222;">Clear Data</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function resetAppData() {
+        if (confirm('Are you sure you want to clear all data? This cannot be undone.')) {
+            Storage.clearAll();
+            window.location.href = '/onboarding';
+        }
+    }
+</script>
+{% endblock %}

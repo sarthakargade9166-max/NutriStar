@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Diet Insights — NutriTrack{% endblock %}
+
+{% block content %}
+<div style="max-width: 680px; margin: 0 auto;">
+    <div class="flex justify-between items-center mb-4" style="margin-bottom: var(--space-4);">
+        <div>
+            <h1 style="font-size: 1.5rem; font-weight: 700; margin: 0;">Diet Insights</h1>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 2px;">Nutrition gap analysis and suggestions</p>
+        </div>
+        <button class="btn btn-primary btn-sm" id="btn-run-analysis" onclick="runAnalysis()">Run Analysis</button>
+    </div>
+
+    <!-- Analysis Loading -->
+    <div id="loading-box" class="panel" style="display: none; text-align: center; padding: var(--space-6);">
+        <p style="color: var(--text-secondary); font-size: 0.9rem;">Analyzing food intake...</p>
+    </div>
+
+    <!-- Output Panel -->
+    <div id="output-panel" style="display: none;">
+        <div class="panel">
+            <div class="panel-header">
+                <span class="panel-title">Summary</span>
+                <span id="priority-tag" class="tag">Analysis</span>
+            </div>
+            <p id="summary-text" style="color: var(--text-primary); font-size: 0.92rem; line-height: 1.5;"></p>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">
+                <span class="panel-title">Actionable Points</span>
+            </div>
+            <div id="tips-list" class="flex-col gap-2">
+                <!-- Rendered by JS -->
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">
+                <span class="panel-title">Recommended Foods</span>
+            </div>
+            <div id="recs-list" class="flex-col gap-2">
+                <!-- Rendered by JS -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        runAnalysis();
+    });
+
+    async function runAnalysis() {
+        const loading = document.getElementById('loading-box');
+        const output = document.getElementById('output-panel');
+        const btn = document.getElementById('btn-run-analysis');
+
+        loading.style.display = 'block';
+        output.style.display = 'none';
+        btn.disabled = true;
+
+        const profile = Storage.getProfile() || {};
+        const logs = Storage.getAllMealLogs();
+        const apiKey = Storage.getApiKey();
+
+        try {
+            const res = await fetch('/api/ai/analyze', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ profile, logs, api_key: apiKey })
+            });
+            const data = await res.json();
+            renderAnalysis(data);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            loading.style.display = 'none';
+            output.style.display = 'block';
+            btn.disabled = false;
+        }
+    }
+
+    function renderAnalysis(data) {
+        document.getElementById('summary-text').textContent = data.summary || 'Dietary overview ready.';
+        document.getElementById('priority-tag').textContent = (data.priority || 'Balanced').toUpperCase();
+
+        const tipsList = document.getElementById('tips-list');
+        const tips = data.tips || (data.insights || []).map(i => i.content || i.title);
+        tipsList.innerHTML = tips.map(t => `
+            <div class="data-row" style="padding: var(--space-2) 0;">
+                <span style="font-size: 0.86rem; color: var(--text-secondary); line-height: 1.4;">${t}</span>
+            </div>
+        `).join('');
+
+        const recsList = document.getElementById('recs-list');
+        const recs = data.recommendations || [];
+        recsList.innerHTML = recs.map(r => `
+            <div class="data-row" style="padding: var(--space-2) 0;">
+                <div>
+                    <div style="font-weight: 500; font-size: 0.88rem; color: var(--text-primary);">${r.name || r.food}</div>
+                    <div style="font-size: 0.78rem; color: var(--text-muted);">${r.reason || ''}</div>
+                </div>
+                <span class="tag">${r.quantity || '1 serving'}</span>
+            </div>
+        `).join('');
+    }
+</script>
+{% endblock %}

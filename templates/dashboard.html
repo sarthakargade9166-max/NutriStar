@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — NutriTrack{% endblock %}
+
+{% block content %}
+<div>
+    <!-- Header with Date Selection -->
+    <div class="flex justify-between items-center wrap gap-3 mb-6" style="margin-bottom: var(--space-6);">
+        <div>
+            <h1 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 2px;">Dashboard</h1>
+            <p id="dashboard-date-label" style="font-size: 0.85rem; color: var(--text-secondary);">Today</p>
+        </div>
+
+        <div class="flex items-center gap-1" style="border: 1px solid var(--border-default); border-radius: var(--radius-sm); padding: 2px; background: var(--surface-primary);">
+            <button class="btn btn-ghost btn-sm" onclick="changeDate(-1)" title="Previous Day" style="padding: 4px 8px;">←</button>
+            <input type="date" id="date-picker-input" class="input font-medium" style="border: none; background: transparent; padding: 4px 8px; width: auto; font-size: 0.82rem; color: var(--text-primary);">
+            <button class="btn btn-ghost btn-sm" onclick="changeDate(1)" title="Next Day" style="padding: 4px 8px;">→</button>
+            <button class="btn btn-ghost btn-sm" onclick="setTodayDate()" style="font-size: 0.78rem; border-left: 1px solid var(--border-subtle); padding: 4px 8px;">Today</button>
+        </div>
+    </div>
+
+    <!-- Core Nutrition Targets Panel -->
+    <div class="panel">
+        <div class="panel-header">
+            <span class="panel-title">Daily Nutrition</span>
+            <span id="calorie-delta-text" style="font-size: 0.82rem; color: var(--text-secondary);">0 kcal remaining</span>
+        </div>
+
+        <div class="grid-4" style="margin-top: var(--space-4);">
+            <!-- Calories -->
+            <div style="background: var(--surface-secondary); padding: var(--space-4); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+                <div style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em;">Calories</div>
+                <div style="font-size: 1.35rem; font-weight: 700; margin: 4px 0;" id="macro-val-calories">0 / 0 kcal</div>
+                <div class="progress-track">
+                    <div class="progress-fill" id="macro-fill-calories" style="width: 0%;"></div>
+                </div>
+            </div>
+
+            <!-- Protein -->
+            <div style="background: var(--surface-secondary); padding: var(--space-4); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+                <div style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em;">Protein</div>
+                <div style="font-size: 1.35rem; font-weight: 700; margin: 4px 0;" id="macro-val-protein">0 / 0 g</div>
+                <div class="progress-track">
+                    <div class="progress-fill" id="macro-fill-protein" style="width: 0%;"></div>
+                </div>
+            </div>
+
+            <!-- Carbs -->
+            <div style="background: var(--surface-secondary); padding: var(--space-4); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+                <div style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em;">Carbs</div>
+                <div style="font-size: 1.35rem; font-weight: 700; margin: 4px 0;" id="macro-val-carbs">0 / 0 g</div>
+                <div class="progress-track">
+                    <div class="progress-fill" id="macro-fill-carbs" style="width: 0%;"></div>
+                </div>
+            </div>
+
+            <!-- Fat -->
+            <div style="background: var(--surface-secondary); padding: var(--space-4); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+                <div style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em;">Fat</div>
+                <div style="font-size: 1.35rem; font-weight: 700; margin: 4px 0;" id="macro-val-fat">0 / 0 g</div>
+                <div class="progress-track">
+                    <div class="progress-fill" id="macro-fill-fat" style="width: 0%;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Meals Section Header -->
+    <div class="flex justify-between items-center mb-3" style="margin-top: var(--space-6); margin-bottom: var(--space-3);">
+        <h2 style="font-size: 1.1rem; font-weight: 600;">Meals</h2>
+        <a href="/log-food" class="btn btn-primary btn-sm">+ Log Food</a>
+    </div>
+
+    <!-- Meals List Container -->
+    <div id="dashboard-meals-list" class="flex-col gap-3">
+        <!-- Rendered by JS -->
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let activeDate = Storage.getTodayDateString();
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const input = document.getElementById('date-picker-input');
+        input.value = activeDate;
+        input.addEventListener('change', (e) => {
+            activeDate = e.target.value;
+            renderDashboard();
+        });
+
+        renderDashboard();
+    });
+
+    function changeDate(delta) {
+        const [y, m, d] = activeDate.split('-').map(Number);
+        const dt = new Date(y, m - 1, d);
+        dt.setDate(dt.getDate() + delta);
+        
+        const year = dt.getFullYear();
+        const month = String(dt.getMonth() + 1).padStart(2, '0');
+        const day = String(dt.getDate()).padStart(2, '0');
+        activeDate = `${year}-${month}-${day}`;
+        document.getElementById('date-picker-input').value = activeDate;
+        renderDashboard();
+    }
+
+    function setTodayDate() {
+        activeDate = Storage.getTodayDateString();
+        document.getElementById('date-picker-input').value = activeDate;
+        renderDashboard();
+    }
+
+    function renderDashboard() {
+        const profile = Storage.getProfile();
+        const targets = Storage.getTargets() || { calories: 2000, protein: 120, carbs: 250, fat: 65 };
+        const logs = Storage.getMealLogs(activeDate);
+        const totals = calculateTotals(logs);
+
+        // Date label
+        const isToday = activeDate === Storage.getTodayDateString();
+        document.getElementById('dashboard-date-label').textContent = isToday ? `Today, ${Storage.formatDateDisplay(activeDate)}` : Storage.formatDateDisplay(activeDate);
+
+        // Macro Cards
+        const tgtCals = targets.calories || targets.calories_kcal || 2000;
+        const tgtPro = targets.protein || targets.protein_g || 120;
+        const tgtCarbs = targets.carbs || targets.carbs_g || 250;
+        const tgtFat = targets.fat || targets.fat_g || 65;
+
+        document.getElementById('macro-val-calories').textContent = `${totals.calories} / ${tgtCals} kcal`;
+        document.getElementById('macro-val-protein').textContent = `${totals.protein} / ${tgtPro} g`;
+        document.getElementById('macro-val-carbs').textContent = `${totals.carbs} / ${tgtCarbs} g`;
+        document.getElementById('macro-val-fat').textContent = `${totals.fat} / ${tgtFat} g`;
+
+        document.getElementById('macro-fill-calories').style.width = `${Math.min((totals.calories / tgtCals) * 100, 100)}%`;
+        document.getElementById('macro-fill-protein').style.width = `${Math.min((totals.protein / tgtPro) * 100, 100)}%`;
+        document.getElementById('macro-fill-carbs').style.width = `${Math.min((totals.carbs / tgtCarbs) * 100, 100)}%`;
+        document.getElementById('macro-fill-fat').style.width = `${Math.min((totals.fat / tgtFat) * 100, 100)}%`;
+
+        const diff = tgtCals - totals.calories;
+        document.getElementById('calorie-delta-text').textContent = diff >= 0 ? `${diff} kcal remaining` : `${Math.abs(diff)} kcal over target`;
+
+        // Render Meals List
+        const container = document.getElementById('dashboard-meals-list');
+        container.innerHTML = '';
+
+        const mealSections = [
+            { key: 'breakfast', label: 'Breakfast' },
+            { key: 'lunch', label: 'Lunch' },
+            { key: 'snack', label: 'Snack' },
+            { key: 'dinner', label: 'Dinner' }
+        ];
+
+        mealSections.forEach(m => {
+            const items = logs[m.key] || [];
+            const mealCals = items.reduce((sum, i) => sum + (Number(i.calories) || 0), 0);
+
+            let itemsRows = '';
+            if (items.length === 0) {
+                itemsRows = `<div style="color: var(--text-muted); font-size: 0.84rem; padding: var(--space-2) 0;">No items logged</div>`;
+            } else {
+                itemsRows = items.map(item => `
+                    <div class="data-row">
+                        <div>
+                            <div style="font-weight: 500; font-size: 0.9rem; color: var(--text-primary);">${escapeHtml(item.name)}</div>
+                            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 1px;">
+                                ${escapeHtml(item.quantity)} ${escapeHtml(item.unit)} ${item.grams ? `· ${Number(item.grams)}g` : ''} · P: ${Math.round(item.protein || 0)}g · C: ${Math.round(item.carbs || 0)}g · F: ${Math.round(item.fat || 0)}g
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span style="font-size: 0.88rem; font-weight: 600; color: var(--text-primary);">${Math.round(item.calories)} kcal</span>
+                            <button class="btn-delete" onclick="removeItem('${m.key}', '${escapeHtml(item.id)}')" title="Delete item">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            container.innerHTML += `
+                <div class="panel" style="margin-bottom: var(--space-3);">
+                    <div class="panel-header" style="margin-bottom: var(--space-2);">
+                        <div class="flex items-center gap-2">
+                            <span style="font-weight: 600; font-size: 0.95rem;">${m.label}</span>
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">· ${Math.round(mealCals)} kcal</span>
+                        </div>
+                        <a href="/log-food?meal=${m.key}&date=${activeDate}" class="btn btn-ghost btn-sm" style="padding: 2px 8px; font-size: 0.8rem;">+ Add</a>
+                    </div>
+                    <div>
+                        ${itemsRows}
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    function removeItem(mealKey, itemId) {
+        Storage.deleteMealItem(activeDate, mealKey, itemId);
+        showToast('Item removed');
+        renderDashboard();
+    }
+</script>
+{% endblock %}
