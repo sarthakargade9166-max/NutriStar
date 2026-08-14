@@ -1,15 +1,23 @@
 # NutriStar
 
-A clinical, minimalist Indian food nutrition and macronutrient tracker built with Flask.
+> Nutrition tracking should be accessible enough to become a daily habit, not expensive enough to become a barrier.
+
+> Built around the foods people actually eat, the portions they actually consume, and the nutrition data they actually need.
+
+A clinical, minimalist Indian food nutrition and macronutrient tracker built with Python and Flask.
+
+---
 
 ## Features
 
-- **Indian Food Database**: 80+ validated Indian food items (IFCT-2017 & USDA) with authentic regional aliases and household portion measures (*katori/bowl, piece, cup, glass, tablespoon, plate*).
-- **Mifflin-St Jeor Calculator**: Computes personalized daily energy targets, BMR, TDEE, and macro ratios (Protein, Carbs, Fats, Fiber).
+- **Extensive Indian Food Database**: 580+ validated Indian food items with authentic regional aliases, Hindi scripts, and household portion measures (*katori/bowl, piece, cup, glass, tablespoon, plate, grams, ml*).
+- **Mifflin-St Jeor Calculator**: Computes personalized daily energy targets, BMR, TDEE, and macro ratios (Protein, Carbs, Fats, Fiber) with both rate-based and timeline-based goal strategies.
 - **Focused Food Logger**: Quick food search with real-time portion customizer and expandable meal tray.
 - **Monochrome Design System**: High-contrast, minimal black-and-white visual interface.
 - **Local Data Persistence**: Client-side storage with zero tracking and full JSON export/import capability.
 - **Security Hardened**: Built-in Content Security Policy, XSS escaping, strict physiological input boundaries, and non-negative quantity validation.
+
+---
 
 ## Project Structure
 
@@ -20,7 +28,7 @@ nutritrack-flask/
 ├── models.py           # Category, activity, and goal data types
 ├── data/
 │   ├── __init__.py
-│   └── foods.py        # Curated Indian foods dataset and search engine
+│   └── foods.py        # 580+ Indian foods dataset and search engine
 ├── nutrition/
 │   ├── __init__.py
 │   ├── calculator.py   # Nutrition calculation & gram conversion
@@ -52,6 +60,8 @@ nutritrack-flask/
 └── README.md
 ```
 
+---
+
 ## Getting Started
 
 ### Prerequisites
@@ -61,13 +71,13 @@ nutritrack-flask/
 
 ### Installation
 
-1. Clone the repository:
+1. **Clone the repository**:
    ```bash
-   git clone https://github.com/your-username/nutritrack.git
+   git clone https://github.com/sarthakargade9166-max/nutritrack-flask.git
    cd nutritrack-flask
    ```
 
-2. Create and activate a virtual environment:
+2. **Create and activate a virtual environment**:
    ```bash
    python -m venv venv
    # On Windows:
@@ -76,21 +86,23 @@ nutritrack-flask/
    source venv/bin/activate
    ```
 
-3. Install dependencies:
+3. **Install dependencies**:
    ```bash
    pip install -r requirements.txt
    ```
 
-4. Configure environment variables:
+4. **Configure environment variables**:
    ```bash
    cp .env.example .env
    ```
 
-5. Run the application:
+5. **Run the application**:
    ```bash
    python app.py
    ```
    Open [http://127.0.0.1:5000](http://127.0.0.1:5000) in your browser.
+
+---
 
 ## Running Tests
 
@@ -98,6 +110,8 @@ Run the automated test suite:
 ```bash
 python test_app.py
 ```
+
+---
 
 ## License
 
