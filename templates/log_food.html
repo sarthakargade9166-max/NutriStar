@@ -27,7 +27,7 @@
         <span class="quick-add-title">QUICK ADD</span>
         <div class="quick-add-chips">
             {% for qf in quick_add_foods %}
-            <button type="button" class="quick-chip" onclick="openPortionModal('{{ qf.id }}', '{{ qf.name }}', '{{ qf.hindi_name or '' }}', {{ qf.serving_size }}, '{{ qf.serving_unit }}', {{ qf.grams_per_serving }}, {{ qf.calories_100g }}, {{ qf.protein_100g }}, {{ qf.carbs_100g }}, {{ qf.fat_100g }})">
+            <button type="button" class="quick-chip" onclick="openPortionModal('{{ qf.id }}')">
                 <span class="chip-name">{{ qf.name }}</span>
                 <span class="chip-cal">{{ ((qf.calories_100g * qf.grams_per_serving) / 100)|int }} kcal</span>
             </button>
@@ -48,7 +48,7 @@
     <!-- Search Results Container -->
     <div class="food-results-container" id="food-results-list">
         {% for food in popular_foods %}
-        <div class="food-card" onclick="openPortionModal('{{ food.id }}', '{{ food.name }}', '{{ food.hindi_name or '' }}', {{ food.serving_size }}, '{{ food.serving_unit }}', {{ food.grams_per_serving }}, {{ food.calories_100g }}, {{ food.protein_100g }}, {{ food.carbs_100g }}, {{ food.fat_100g }})">
+        <div class="food-card" onclick="openPortionModal('{{ food.id }}')">
             <div class="food-info">
                 <div class="food-title-row">
                     <span class="food-name">{{ food.name }}</span>

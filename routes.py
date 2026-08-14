@@ -1,4 +1,4 @@
-"""Routes and request handlers for NutriStar - Login-Free Version with Session Isolation."""
+"""Routes and request handlers for NutriStar - Login-Free Version with Smart Search."""
 
 import uuid
 from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify, flash
@@ -137,7 +137,7 @@ def log_food():
 
     quick_add_foods = get_personalized_quick_add(user.id, limit=4)
 
-    # Initial search sample (popular items)
+    # Initial popular staples
     popular_foods = Food.query.limit(25).all()
 
     return render_template(
@@ -319,19 +319,62 @@ def settings():
 
 @routes.route('/api/foods/search', methods=['GET'])
 def api_search_foods():
-    q = request.args.get('q', '').strip().lower()
-    if not q:
-        foods = Food.query.limit(20).all()
+    raw_q = request.args.get('q', '').strip()
+    if not raw_q:
+        foods = Food.query.limit(25).all()
         return jsonify([f.to_dict() for f in foods])
 
-    results = Food.query.filter(
-        (Food.name.ilike(f'%{q}%')) |
-        (Food.hindi_name.ilike(f'%{q}%')) |
-        (Food.aliases.ilike(f'%{q}%')) |
-        (Food.category.ilike(f'%{q}%'))
-    ).limit(30).all()
+    q = raw_q.lower()
+    # Normalize plural s/es for queries longer than 3 characters (e.g. chapatis -> chapati, eggs -> egg)
+    stems = [q]
+    if len(q) > 3 and q.endswith('es'):
+        stems.append(q[:-2])
+    elif len(q) > 3 and q.endswith('s'):
+        stems.append(q[:-1])
 
-    return jsonify([f.to_dict() for f in results])
+    # Load all foods into memory for instantaneous multi-criteria ranking
+    all_foods = Food.query.all()
+    scored = []
+
+    for food in all_foods:
+        name_l = food.name.lower()
+        hindi_l = (food.hindi_name or '').lower()
+        aliases_l = (food.aliases or '').lower()
+        cat_l = (food.category or '').lower()
+        fid_l = food.id.lower()
+
+        score = 0
+        for term in stems:
+            # 1. Exact match on ID, name or alias
+            if term == fid_l or term == name_l or term in aliases_l.split(','):
+                score = max(score, 100)
+            # 2. Name starts with query
+            elif name_l.startswith(term):
+                score = max(score, 80)
+            # 3. Word in name starts with query
+            elif any(w.startswith(term) for w in name_l.split()):
+                score = max(score, 70)
+            # 4. Word in aliases starts with query
+            elif any(w.startswith(term) for a in aliases_l.split(',') for w in a.strip().split()):
+                score = max(score, 60)
+            # 5. Substring anywhere in name
+            elif term in name_l:
+                score = max(score, 50)
+            # 6. Substring anywhere in aliases or ID
+            elif term in aliases_l or term in fid_l:
+                score = max(score, 40)
+            # 7. Match in Hindi script or category
+            elif term in hindi_l or term in cat_l:
+                score = max(score, 30)
+
+        if score > 0:
+            scored.append((score, food))
+
+    # Sort by score descending, then alphabetical name
+    scored.sort(key=lambda x: (-x[0], x[1].name))
+    results = [item[1].to_dict() for item in scored[:35]]
+
+    return jsonify(results)
 
 
 @routes.route('/api/foods/<food_id>', methods=['GET'])

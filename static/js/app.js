@@ -5,6 +5,7 @@
 let searchTimeout = null;
 let currentFoodData = null;
 let currentEditFoodData = null;
+window.foodCache = {};
 
 // ==========================================
 // DATE NAVIGATION & PERSISTENCE
@@ -81,13 +82,13 @@ function handleFoodSearch(query) {
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(async () => {
         try {
-            const res = await fetch(`/api/foods/search?q=${encodeURIComponent(query)}`);
+            const res = await fetch(`/api/foods/search?q=${encodeURIComponent(query.trim())}`);
             const foods = await res.json();
             renderSearchResults(foods);
         } catch (e) {
             console.error('Search error', e);
         }
-    }, 200);
+    }, 150);
 }
 
 function clearFoodSearch() {
@@ -108,6 +109,9 @@ function renderSearchResults(foods) {
         return;
     }
 
+    // Cache foods for instant lookup
+    foods.forEach(f => { window.foodCache[f.id] = f; });
+
     container.innerHTML = foods.map(food => {
         const servingCals = Math.round((food.calories_100g * food.grams_per_serving) / 100);
         const servingProt = Math.round((food.protein_100g * food.grams_per_serving) / 100);
@@ -115,7 +119,7 @@ function renderSearchResults(foods) {
         const servingFat = Math.round((food.fat_100g * food.grams_per_serving) / 100);
 
         return `
-            <div class="food-card" onclick="openPortionModal('${food.id}', '${escapeHtml(food.name)}', '${escapeHtml(food.hindi_name || '')}', ${food.serving_size}, '${food.serving_unit}', ${food.grams_per_serving}, ${food.calories_100g}, ${food.protein_100g}, ${food.carbs_100g}, ${food.fat_100g})">
+            <div class="food-card" onclick="openPortionModal('${food.id}')">
                 <div class="food-info">
                     <div class="food-title-row">
                         <span class="food-name">${escapeHtml(food.name)}</span>
@@ -143,27 +147,47 @@ function escapeHtml(str) {
 // PORTION CUSTOMIZER MODAL (LOGGING FOOD)
 // ==========================================
 
-async function openPortionModal(id, name, hindiName, servingSize, servingUnit, grams, cal100, prot100, carb100, fat100) {
+async function openPortionModal(foodId) {
+    let food = window.foodCache[foodId];
+
+    // Fetch full food details if not already in cache or to get unit options
+    try {
+        const res = await fetch(`/api/foods/${foodId}`);
+        food = await res.json();
+        window.foodCache[foodId] = food;
+    } catch (e) {
+        console.error('Failed to load food details', e);
+    }
+
+    if (!food) return;
+
     currentFoodData = {
-        id, name, hindiName, servingSize, servingUnit, grams, cal100, prot100, carb100, fat100
+        id: food.id,
+        name: food.name,
+        hindiName: food.hindi_name || '',
+        servingSize: food.serving_size || 1.0,
+        servingUnit: food.serving_unit || 'serving',
+        grams: food.grams_per_serving || 100.0,
+        cal100: food.calories_100g || 0.0,
+        prot100: food.protein_100g || 0.0,
+        carb100: food.carbs_100g || 0.0,
+        fat100: food.fat_100g || 0.0
     };
 
-    document.getElementById('selected-food-id').value = id;
-    document.getElementById('portion-food-name').innerText = name;
-    document.getElementById('portion-food-hindi').innerText = hindiName || '';
-    document.getElementById('portion-quantity').value = servingSize || 1;
+    document.getElementById('selected-food-id').value = food.id;
+    document.getElementById('portion-food-name').innerText = food.name;
+    document.getElementById('portion-food-hindi').innerText = food.hindi_name || '';
+    document.getElementById('portion-quantity').value = food.serving_size || 1;
 
-    // Fetch unit options from API
-    try {
-        const res = await fetch(`/api/foods/${id}`);
-        const data = await res.json();
-        const unitSelect = document.getElementById('portion-unit');
-        unitSelect.innerHTML = (data.unit_options || []).map(opt => `
-            <option value="${opt.value}" ${opt.value === servingUnit ? 'selected' : ''}>${opt.label}</option>
-        `).join('');
-    } catch (e) {
-        console.error('Failed to load unit options', e);
-    }
+    const unitSelect = document.getElementById('portion-unit');
+    const unitOpts = food.unit_options || [
+        { value: food.serving_unit || 'serving', label: `${food.serving_unit || 'Serving'} (${Math.round(food.grams_per_serving || 100)}g)` },
+        { value: 'g', label: 'Grams (g)' }
+    ];
+
+    unitSelect.innerHTML = unitOpts.map(opt => `
+        <option value="${opt.value}" ${opt.value === food.serving_unit ? 'selected' : ''}>${opt.label}</option>
+    `).join('');
 
     recalculatePortionNutrition();
     document.getElementById('portion-modal').style.display = 'flex';
