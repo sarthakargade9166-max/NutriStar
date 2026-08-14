@@ -1,4 +1,4 @@
-"""Routes and request handlers for NutriStar - Login-Free Version with Smart Search."""
+"""Routes and request handlers for NutriStar - Login-Free Version with Smart Search & Auto-Seeding."""
 
 import uuid
 from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify, flash
@@ -13,6 +13,7 @@ from nutrition import (
     get_ist_default_meal,
     get_rolling_10_days,
 )
+from seed_data import seed_foods_if_empty
 
 routes = Blueprint('routes', __name__)
 
@@ -134,6 +135,10 @@ def log_food():
     user = get_default_user()
     active_date = session.get('active_date') or get_ist_today()
     default_meal = request.args.get('meal') or get_ist_default_meal()
+
+    # Auto-seed if database is empty on fresh cloud host
+    if Food.query.count() == 0:
+        seed_foods_if_empty()
 
     quick_add_foods = get_personalized_quick_add(user.id, limit=4)
 
@@ -319,6 +324,10 @@ def settings():
 
 @routes.route('/api/foods/search', methods=['GET'])
 def api_search_foods():
+    # Auto-seed if database is empty on fresh cloud host
+    if Food.query.count() == 0:
+        seed_foods_if_empty()
+
     raw_q = request.args.get('q', '').strip()
     if not raw_q:
         foods = Food.query.limit(25).all()

@@ -48,9 +48,11 @@ def create_app(config_class=Config):
             return jsonify({'error': 'Internal Server Error', 'message': 'An unexpected error occurred.'}), 500
         return 'Internal Server Error', 500
 
-    # Auto-create tables on launch
+    # Auto-create tables and auto-seed 581 foods on startup
     with app.app_context():
         db.create_all()
+        from seed_data import seed_foods_if_empty
+        seed_foods_if_empty()
 
     return app
 

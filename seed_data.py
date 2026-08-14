@@ -1,22 +1,16 @@
-"""Database initialization and seeding script for NutriStar."""
+"""Database initialization and seeding utilities for NutriStar."""
 
-from app import create_app
 from database import db
 from models import Food, User, Profile
 from data.foods import FOODS
 
 
-def seed_database():
-    app = create_app()
-    with app.app_context():
-        # Create all tables
-        db.create_all()
-        print("Database tables created successfully.")
-
-        # Seed Foods
-        existing_count = Food.query.count()
-        if existing_count == 0:
-            print(f"Seeding {len(FOODS)} foods from master dataset...")
+def seed_foods_if_empty():
+    """Seeds master 581 Indian foods into SQLite if table is empty."""
+    try:
+        count = Food.query.count()
+        if count == 0:
+            print(f"Auto-seeding {len(FOODS)} foods into database...")
             for f in FOODS:
                 aliases_str = ','.join(f.get('aliases', [])) if isinstance(f.get('aliases'), list) else str(f.get('aliases', ''))
                 hindi_name = f.get('name_hindi') or f.get('hindi_name') or ''
@@ -40,39 +34,18 @@ def seed_database():
                 )
                 db.session.add(food)
             db.session.commit()
-            print(f"Successfully seeded {len(FOODS)} food items into SQLite database.")
-        else:
-            print(f"Database already contains {existing_count} foods. Skipping food seed.")
+            print(f"Successfully seeded {len(FOODS)} foods into database.")
+    except Exception as e:
+        print(f"Seed error: {e}")
+        db.session.rollback()
 
-        # Create demo user if none exists
-        demo_user = User.query.filter_by(email='demo@nutristar.app').first()
-        if not demo_user:
-            demo_user = User(email='demo@nutristar.app')
-            demo_user.set_password('demo1234')
-            db.session.add(demo_user)
-            db.session.commit()
 
-            demo_profile = Profile(
-                user_id=demo_user.id,
-                name='Sarthak',
-                age=25,
-                gender='male',
-                height_cm=175.0,
-                current_weight_kg=75.0,
-                target_weight_kg=70.0,
-                activity_level='moderate',
-                goal_type='lose',
-                goal_control_mode='rate',
-                target_rate_kg_per_week=0.5,
-                calorie_target=1986,
-                protein_target=135,
-                carbs_target=220,
-                fat_target=55,
-                fiber_target=28
-            )
-            db.session.add(demo_profile)
-            db.session.commit()
-            print("Demo user created (demo@nutristar.app / demo1234).")
+def seed_database():
+    from app import create_app
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        seed_foods_if_empty()
 
 
 if __name__ == '__main__':
