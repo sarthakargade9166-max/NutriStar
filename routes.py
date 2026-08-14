@@ -1,5 +1,3 @@
-"""Routes and request handlers for NutriStar - Login-Free Version with Smart Search & Auto-Seeding."""
-
 import uuid
 from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify, flash
 from database import db
@@ -19,10 +17,6 @@ routes = Blueprint('routes', __name__)
 
 
 def get_default_user():
-    """
-    Retrieves or creates a session-isolated user profile.
-    Allows login-free usage while keeping each visitor's logs private on cloud hosts like Render.
-    """
     if 'guest_uuid' not in session:
         session['guest_uuid'] = str(uuid.uuid4())
 
@@ -60,7 +54,6 @@ def get_default_user():
     return user
 
 
-# Context Processor: Injects active date, user, and profile into all templates
 @routes.app_context_processor
 def inject_global_data():
     active_date = session.get('active_date') or get_ist_today()
@@ -73,10 +66,6 @@ def inject_global_data():
     }
 
 
-# ==========================================
-# MAIN APPLICATION PAGES (LOGIN-FREE)
-# ==========================================
-
 @routes.route('/')
 def index():
     return redirect(url_for('routes.dashboard'))
@@ -87,10 +76,8 @@ def dashboard():
     user = get_default_user()
     active_date = session.get('active_date') or get_ist_today()
 
-    # Query logged items for active date
     items = MealItem.query.filter_by(user_id=user.id, date=active_date).order_by(MealItem.id.asc()).all()
 
-    # Group items by meal type
     meals = {'breakfast': [], 'lunch': [], 'snack': [], 'dinner': []}
     totals = {'calories': 0.0, 'protein': 0.0, 'carbs': 0.0, 'fat': 0.0, 'fiber': 0.0}
 
@@ -104,7 +91,6 @@ def dashboard():
         totals['fat'] += item.fat
         totals['fiber'] += item.fiber
 
-    # Round totals
     for k in totals:
         totals[k] = round(totals[k], 1)
 
@@ -136,13 +122,10 @@ def log_food():
     active_date = session.get('active_date') or get_ist_today()
     default_meal = request.args.get('meal') or get_ist_default_meal()
 
-    # Auto-seed if database is empty on fresh cloud host
     if Food.query.count() == 0:
         seed_foods_if_empty()
 
     quick_add_foods = get_personalized_quick_add(user.id, limit=4)
-
-    # Initial popular staples
     popular_foods = Food.query.limit(25).all()
 
     return render_template(
@@ -318,13 +301,8 @@ def settings():
     return render_template('settings.html', user=user)
 
 
-# ==========================================
-# DYNAMIC JSON API ENDPOINTS
-# ==========================================
-
 @routes.route('/api/foods/search', methods=['GET'])
 def api_search_foods():
-    # Auto-seed if database is empty on fresh cloud host
     if Food.query.count() == 0:
         seed_foods_if_empty()
 
@@ -334,14 +312,12 @@ def api_search_foods():
         return jsonify([f.to_dict() for f in foods])
 
     q = raw_q.lower()
-    # Normalize plural s/es for queries longer than 3 characters (e.g. chapatis -> chapati, eggs -> egg)
     stems = [q]
     if len(q) > 3 and q.endswith('es'):
         stems.append(q[:-2])
     elif len(q) > 3 and q.endswith('s'):
         stems.append(q[:-1])
 
-    # Load all foods into memory for instantaneous multi-criteria ranking
     all_foods = Food.query.all()
     scored = []
 
@@ -354,32 +330,24 @@ def api_search_foods():
 
         score = 0
         for term in stems:
-            # 1. Exact match on ID, name or alias
             if term == fid_l or term == name_l or term in aliases_l.split(','):
                 score = max(score, 100)
-            # 2. Name starts with query
             elif name_l.startswith(term):
                 score = max(score, 80)
-            # 3. Word in name starts with query
             elif any(w.startswith(term) for w in name_l.split()):
                 score = max(score, 70)
-            # 4. Word in aliases starts with query
             elif any(w.startswith(term) for a in aliases_l.split(',') for w in a.strip().split()):
                 score = max(score, 60)
-            # 5. Substring anywhere in name
             elif term in name_l:
                 score = max(score, 50)
-            # 6. Substring anywhere in aliases or ID
             elif term in aliases_l or term in fid_l:
                 score = max(score, 40)
-            # 7. Match in Hindi script or category
             elif term in hindi_l or term in cat_l:
                 score = max(score, 30)
 
         if score > 0:
             scored.append((score, food))
 
-    # Sort by score descending, then alphabetical name
     scored.sort(key=lambda x: (-x[0], x[1].name))
     results = [item[1].to_dict() for item in scored[:35]]
 

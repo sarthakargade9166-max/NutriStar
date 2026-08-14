@@ -1,15 +1,7 @@
-/**
- * NutriStar - Client Interactive Behavior (Vanilla JavaScript)
- */
-
 let searchTimeout = null;
 let currentFoodData = null;
 let currentEditFoodData = null;
 window.foodCache = {};
-
-// ==========================================
-// DATE NAVIGATION & PERSISTENCE
-// ==========================================
 
 function initDateControls() {
     const dateInput = document.getElementById('active-date-input');
@@ -69,10 +61,6 @@ async function setActiveDate(dateStr) {
     }
 }
 
-// ==========================================
-// FOOD SEARCH
-// ==========================================
-
 function handleFoodSearch(query) {
     const clearBtn = document.getElementById('clear-search-btn');
     if (clearBtn) {
@@ -109,7 +97,6 @@ function renderSearchResults(foods) {
         return;
     }
 
-    // Cache foods for instant lookup
     foods.forEach(f => { window.foodCache[f.id] = f; });
 
     container.innerHTML = foods.map(food => {
@@ -143,14 +130,9 @@ function escapeHtml(str) {
     return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
 
-// ==========================================
-// PORTION CUSTOMIZER MODAL (LOGGING FOOD)
-// ==========================================
-
 async function openPortionModal(foodId) {
     let food = window.foodCache[foodId];
 
-    // Fetch full food details if not already in cache or to get unit options
     try {
         const res = await fetch(`/api/foods/${foodId}`);
         food = await res.json();
@@ -261,10 +243,6 @@ async function handleLogFoodSubmit(e) {
         btn.innerText = 'Log Food';
     }
 }
-
-// ==========================================
-// IN-PLACE EDIT MODAL
-// ==========================================
 
 async function openEditModal(itemId, foodId, foodName, quantity, unit, mealType) {
     document.getElementById('edit-item-id').value = itemId;

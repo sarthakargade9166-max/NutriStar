@@ -1,10 +1,7 @@
-"""Nutrition calculation and serving size logic for NutriStar."""
-
 from datetime import datetime, timedelta, timezone
 import pytz
 from database import db
 
-# Unit definitions and reference gram weights
 UNIT_DEFINITIONS = {
     'piece': {'label': 'Piece', 'default_grams': 50.0},
     'bowl': {'label': 'Bowl (Katori)', 'default_grams': 150.0},
@@ -25,48 +22,43 @@ UNIT_DEFINITIONS = {
 
 
 def get_unit_options(food):
-    """Returns available serving units for a given food."""
-    unit = (food.get('serving_unit') or getattr(food, 'serving_unit', 'serving')).lower()
-    category = (food.get('category') or getattr(food, 'category', '')).lower()
-    name = (food.get('name') or getattr(food, 'name', '')).lower()
-
-    options = []
+    unit = (getattr(food, 'serving_unit', None) or (food.get('serving_unit') if isinstance(food, dict) else 'serving') or 'serving').lower()
+    category = (getattr(food, 'category', None) or (food.get('category') if isinstance(food, dict) else '') or '').lower()
+    name = (getattr(food, 'name', None) or (food.get('name') if isinstance(food, dict) else '') or '').lower()
 
     if category == 'beverages' or unit == 'ml' or 'tea' in name or 'coffee' in name or 'juice' in name or 'milk' in name or 'lassi' in name or 'chaas' in name:
-        options = [
+        return [
             {'value': 'ml', 'label': 'Milliliters (ml)'},
             {'value': 'cup', 'label': 'Cup (200 ml)'},
             {'value': 'glass', 'label': 'Glass (250 ml)'},
         ]
     elif unit == 'piece' or 'roti' in name or 'chapati' in name or 'bhakri' in name or 'egg' in name or 'idli' in name or 'samosa' in name or 'vada' in name or 'banana' in name or 'apple' in name:
-        options = [
+        return [
             {'value': 'piece', 'label': 'Piece'},
             {'value': 'g', 'label': 'Grams (g)'},
         ]
     elif unit in ['bowl', 'katori'] or category in ['rice', 'dals', 'vegetables'] or 'dal' in name or 'curry' in name or 'khichdi' in name or 'poha' in name or 'sabji' in name or 'bhaji' in name or 'rice' in name:
-        options = [
+        return [
             {'value': 'bowl', 'label': 'Bowl (Katori - 150g)'},
             {'value': 'cup', 'label': 'Cup (120g)'},
             {'value': 'plate', 'label': 'Plate (300g)'},
             {'value': 'g', 'label': 'Grams (g)'},
         ]
     elif unit in ['tablespoon', 'tbsp', 'teaspoon', 'tsp'] or 'ghee' in name or 'oil' in name or 'butter' in name or 'chutney' in name:
-        options = [
+        return [
             {'value': 'tablespoon', 'label': 'Tablespoon (15g)'},
             {'value': 'teaspoon', 'label': 'Teaspoon (5g)'},
             {'value': 'g', 'label': 'Grams (g)'},
         ]
     else:
-        options = [
-            {'value': 'serving', 'label': f"Serving ({int(food.get('grams_per_serving', 100) if isinstance(food, dict) else getattr(food, 'grams_per_serving', 100))}g)"},
+        grams_val = int(getattr(food, 'grams_per_serving', 100) if not isinstance(food, dict) else food.get('grams_per_serving', 100))
+        return [
+            {'value': 'serving', 'label': f"Serving ({grams_val}g)"},
             {'value': 'g', 'label': 'Grams (g)'},
         ]
 
-    return options
-
 
 def calculate_food_nutrition(food, quantity, unit):
-    """Calculates calories and macronutrients for a given food and serving."""
     try:
         qty = float(quantity)
         if qty <= 0:
@@ -76,15 +68,15 @@ def calculate_food_nutrition(food, quantity, unit):
 
     unit_norm = (unit or 'serving').lower()
 
-    # Get food attributes (handles both dict and SQLAlchemy Model)
-    grams_per_serving = float(food.get('grams_per_serving', 100.0) if isinstance(food, dict) else getattr(food, 'grams_per_serving', 100.0) or 100.0)
-    cal_100g = float(food.get('calories_100g', 0.0) if isinstance(food, dict) else getattr(food, 'calories_100g', 0.0) or 0.0)
-    prot_100g = float(food.get('protein_100g', 0.0) if isinstance(food, dict) else getattr(food, 'protein_100g', 0.0) or 0.0)
-    carb_100g = float(food.get('carbs_100g', 0.0) if isinstance(food, dict) else getattr(food, 'carbs_100g', 0.0) or 0.0)
-    fat_100g = float(food.get('fat_100g', 0.0) if isinstance(food, dict) else getattr(food, 'fat_100g', 0.0) or 0.0)
-    fiber_100g = float(food.get('fiber_100g', 0.0) if isinstance(food, dict) else getattr(food, 'fiber_100g', 0.0) or 0.0)
+    grams_per_serving = float(getattr(food, 'grams_per_serving', 100.0) if not isinstance(food, dict) else food.get('grams_per_serving', 100.0) or 100.0)
+    cal_100g = float(getattr(food, 'calories_100g', 0.0) if not isinstance(food, dict) else food.get('calories_100g', 0.0) or 0.0)
+    prot_100g = float(getattr(food, 'protein_100g', 0.0) if not isinstance(food, dict) else food.get('protein_100g', 0.0) or 0.0)
+    carb_100g = float(getattr(food, 'carbs_100g', 0.0) if not isinstance(food, dict) else food.get('carbs_100g', 0.0) or 0.0)
+    fat_100g = float(getattr(food, 'fat_100g', 0.0) if not isinstance(food, dict) else food.get('fat_100g', 0.0) or 0.0)
+    fiber_100g = float(getattr(food, 'fiber_100g', 0.0) if not isinstance(food, dict) else food.get('fiber_100g', 0.0) or 0.0)
 
-    # Determine total grams
+    food_name = (getattr(food, 'name', '') if not isinstance(food, dict) else food.get('name', '')).lower()
+
     if unit_norm in ['g', 'grams', 'ml']:
         total_grams = qty
     elif unit_norm in ['serving', 'package']:
@@ -96,7 +88,7 @@ def calculate_food_nutrition(food, quantity, unit):
     elif unit_norm == 'glass':
         total_grams = qty * 250.0
     elif unit_norm == 'cup':
-        total_grams = qty * 120.0 if 'rice' in (food.get('name', '') if isinstance(food, dict) else getattr(food, 'name', '')).lower() else qty * 200.0
+        total_grams = qty * 120.0 if 'rice' in food_name else qty * 200.0
     elif unit_norm == 'plate':
         total_grams = qty * 300.0
     elif unit_norm in ['tablespoon', 'tbsp']:
@@ -119,7 +111,6 @@ def calculate_food_nutrition(food, quantity, unit):
 
 
 def calculate_tdee(weight_kg, height_cm, age, gender, activity_level):
-    """Calculates BMR and TDEE using the Mifflin-St Jeor equation."""
     if gender.lower() == 'female':
         bmr = (10 * weight_kg) + (6.25 * height_cm) - (5 * age) - 161
     else:
@@ -138,7 +129,6 @@ def calculate_tdee(weight_kg, height_cm, age, gender, activity_level):
 
 def calculate_targets(current_weight, target_weight, height_cm, age, gender, activity_level,
                       goal_control_mode='rate', target_rate_kg_per_week=0.5, target_weeks=12):
-    """Calculates daily calorie and macronutrient targets based on weight goals."""
     tdee = calculate_tdee(current_weight, height_cm, age, gender, activity_level)
     diff = target_weight - current_weight
 
@@ -168,7 +158,6 @@ def calculate_targets(current_weight, target_weight, height_cm, age, gender, act
             daily_surplus = total_surplus / (weeks * 7)
             target_calories = round(tdee + daily_surplus)
 
-    # Macronutrient distribution
     protein_multiplier = 1.8 if goal_type == 'lose' else (1.6 if goal_type == 'gain' else 1.4)
     protein_g = round(current_weight * protein_multiplier)
     protein_cals = protein_g * 4
@@ -194,10 +183,6 @@ def calculate_targets(current_weight, target_weight, height_cm, age, gender, act
 
 
 def get_personalized_quick_add(user_id, limit=4):
-    """
-    Ranks foods logged by the user in the last 10 days by frequency (primary)
-    and recency (secondary). Falls back to standard staples if logs < limit.
-    """
     from models import MealItem, Food
 
     ten_days_ago = (datetime.now(timezone.utc) - timedelta(days=10)).strftime('%Y-%m-%d')
@@ -216,7 +201,6 @@ def get_personalized_quick_add(user_id, limit=4):
         if fid not in last_logged or item_created > last_logged[fid]:
             last_logged[fid] = item_created
 
-    # Sort by frequency desc, recency desc
     min_date = datetime.min.replace(tzinfo=timezone.utc)
     sorted_fids = sorted(
         food_counts.keys(),
@@ -235,7 +219,6 @@ def get_personalized_quick_add(user_id, limit=4):
             if len(result_foods) >= limit:
                 break
 
-    # Fallback staples if user has fewer than limit
     if len(result_foods) < limit:
         staple_ids = ['chapati', 'rice-cooked', 'chai', 'filter-coffee', 'toor-dal-cooked', 'boiled-egg']
         for sid in staple_ids:
@@ -251,13 +234,11 @@ def get_personalized_quick_add(user_id, limit=4):
 
 
 def get_ist_today():
-    """Returns today's date string (YYYY-MM-DD) in Indian Standard Time."""
     tz = pytz.timezone('Asia/Kolkata')
     return datetime.now(tz).strftime('%Y-%m-%d')
 
 
 def get_ist_default_meal():
-    """Returns default meal type (breakfast, lunch, snack, dinner) based on IST time."""
     tz = pytz.timezone('Asia/Kolkata')
     now = datetime.now(tz)
     hour = now.hour
@@ -273,7 +254,6 @@ def get_ist_default_meal():
 
 
 def get_rolling_10_days():
-    """Returns list of last 10 dates (today + previous 9 days) with display formatting."""
     tz = pytz.timezone('Asia/Kolkata')
     now = datetime.now(tz)
     dates = []

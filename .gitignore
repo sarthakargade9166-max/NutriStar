@@ -1,26 +1,21 @@
-# Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
 
-# Virtual Environments
 venv/
 env/
 ENV/
 .venv/
 
-# Environment Variables
 .env
 .env.local
 
-# SQLite Database & Instance Folder
 instance/
 *.sqlite3
 *.db
 
-# Logs & OS artifacts
 *.log
 .DS_Store
 Thumbs.db

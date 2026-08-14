@@ -12,7 +12,7 @@
         <a href="{{ url_for('routes.dashboard') }}" class="btn btn-secondary btn-sm">&larr; Back</a>
     </div>
 
-    <!-- Meal Type Selector Tabs -->
+    
     <div class="meal-tabs">
         {% for mkey, mlabel in [('breakfast', 'Breakfast'), ('lunch', 'Lunch'), ('snack', 'Snack'), ('dinner', 'Dinner')] %}
         <button type="button" class="meal-tab-btn {% if default_meal == mkey %}active{% endif %}" data-meal="{{ mkey }}" onclick="selectMealTab('{{ mkey }}')">
@@ -21,7 +21,7 @@
         {% endfor %}
     </div>
 
-    <!-- Personalized Quick Add Chips -->
+    
     {% if quick_add_foods %}
     <div class="quick-add-section">
         <span class="quick-add-title">QUICK ADD</span>
@@ -36,7 +36,7 @@
     </div>
     {% endif %}
 
-    <!-- Food Search Input -->
+    
     <div class="search-container">
         <div class="search-input-wrapper">
             <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
@@ -45,7 +45,7 @@
         </div>
     </div>
 
-    <!-- Search Results Container -->
+    
     <div class="food-results-container" id="food-results-list">
         {% for food in popular_foods %}
         <div class="food-card" onclick="openPortionModal('{{ food.id }}')">
@@ -69,7 +69,6 @@
     </div>
 </div>
 
-<!-- Portion Customizer Modal -->
 <div class="modal-overlay" id="portion-modal" style="display: none;">
     <div class="modal-card">
         <div class="modal-header">
@@ -94,7 +93,7 @@
                 <select id="portion-unit" class="select-field" onchange="recalculatePortionNutrition()"></select>
             </div>
 
-            <!-- Live Calculated Nutrition Preview -->
+            
             <div class="modal-nutrition-preview" id="portion-nutrition-preview">
                 <div class="preview-metric"><span class="label">Calories</span><span class="value" id="portion-preview-cals">0 kcal</span></div>
                 <div class="preview-metric"><span class="label">Protein</span><span class="value" id="portion-preview-protein">0g</span></div>

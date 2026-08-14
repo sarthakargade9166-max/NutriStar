@@ -1,7 +1,3 @@
-/* ==========================================================================
-   NutriStar - Monochrome Design System (CSS)
-   ========================================================================== */
-
 :root {
     --bg-main: #000000;
     --bg-card: #0c0c0c;
@@ -32,17 +28,13 @@ body {
     font-family: var(--font-family);
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
-    padding-bottom: 72px; /* For mobile nav */
+    padding-bottom: 72px; 
 }
 
 a {
     color: inherit;
     text-decoration: none;
 }
-
-/* ==========================================================================
-   Navigation
-   ========================================================================== */
 
 .top-nav {
     position: sticky;
@@ -112,7 +104,6 @@ a {
     color: #ff7777;
 }
 
-/* Mobile Bottom Nav */
 .mobile-bottom-nav {
     display: none;
     position: fixed;
@@ -141,10 +132,6 @@ a {
 .mobile-nav-item.active {
     color: var(--text-primary);
 }
-
-/* ==========================================================================
-   Layout Containers
-   ========================================================================== */
 
 .main-wrapper {
     max-width: 1000px;
@@ -206,10 +193,6 @@ a {
     cursor: pointer;
 }
 
-/* ==========================================================================
-   Flash Alerts
-   ========================================================================== */
-
 .flash-container {
     max-width: 1000px;
     margin: 0 auto;
@@ -234,10 +217,6 @@ a {
     border: 1px solid var(--border-color);
     color: var(--text-primary);
 }
-
-/* ==========================================================================
-   Cards & Metrics
-   ========================================================================== */
 
 .section-card {
     background-color: var(--bg-card);
@@ -315,10 +294,6 @@ a {
     border-radius: 2px;
     transition: width 0.3s ease;
 }
-
-/* ==========================================================================
-   Meals Section
-   ========================================================================== */
 
 .meals-container {
     display: flex;
@@ -426,10 +401,6 @@ a {
     font-size: 13px;
     padding: 8px 0;
 }
-
-/* ==========================================================================
-   Food Search & Logging
-   ========================================================================== */
 
 .meal-tabs {
     display: flex;
@@ -607,10 +578,6 @@ a {
     font-weight: 700;
 }
 
-/* ==========================================================================
-   Modals
-   ========================================================================== */
-
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -693,10 +660,6 @@ a {
     gap: 8px;
 }
 
-/* ==========================================================================
-   Forms & Inputs
-   ========================================================================== */
-
 .form-group {
     display: flex;
     flex-direction: column;
@@ -736,7 +699,6 @@ label {
     border-color: var(--text-primary);
 }
 
-/* Auth Card */
 .auth-card {
     background-color: var(--bg-card);
     border: 1px solid var(--border-color);
@@ -768,10 +730,6 @@ label {
     color: var(--text-primary);
     text-decoration: underline;
 }
-
-/* ==========================================================================
-   Buttons
-   ========================================================================== */
 
 .btn {
     display: inline-flex;
@@ -855,10 +813,6 @@ label {
     width: 100%;
 }
 
-/* ==========================================================================
-   History List
-   ========================================================================== */
-
 .history-list {
     display: flex;
     flex-direction: column;
@@ -918,10 +872,6 @@ label {
     gap: 6px;
 }
 
-/* ==========================================================================
-   Settings
-   ========================================================================== */
-
 .settings-row {
     display: flex;
     justify-content: space-between;
@@ -935,10 +885,6 @@ label {
 .text-secondary {
     color: var(--text-secondary);
 }
-
-/* ==========================================================================
-   Responsive Breakpoints
-   ========================================================================== */
 
 @media (max-width: 768px) {
     .nav-links {

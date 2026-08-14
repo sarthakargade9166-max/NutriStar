@@ -126,8 +126,8 @@ class MealItem(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
-    date = db.Column(db.String(10), nullable=False, index=True)  # YYYY-MM-DD
-    meal_type = db.Column(db.String(20), nullable=False, index=True)  # breakfast, lunch, snack, dinner
+    date = db.Column(db.String(10), nullable=False, index=True)
+    meal_type = db.Column(db.String(20), nullable=False, index=True)
     food_id = db.Column(db.String(100), nullable=False)
     food_name = db.Column(db.String(150), nullable=False)
     quantity = db.Column(db.Float, nullable=False, default=1.0)

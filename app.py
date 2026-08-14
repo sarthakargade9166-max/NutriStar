@@ -1,5 +1,3 @@
-"""NutriStar - Flask Application Entry Point."""
-
 import os
 from flask import Flask, jsonify, request
 from config import Config
@@ -10,17 +8,13 @@ def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
 
-    # Ensure instance directory exists for SQLite
     os.makedirs(app.instance_path, exist_ok=True)
 
-    # Initialize Database
     db.init_app(app)
 
-    # Register Routes Blueprint
     from routes import routes
     app.register_blueprint(routes)
 
-    # HTTP Security Headers Middleware
     @app.after_request
     def set_security_headers(response):
         response.headers['X-Content-Type-Options'] = 'nosniff'
@@ -29,7 +23,6 @@ def create_app(config_class=Config):
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
         return response
 
-    # Global Error Handlers
     @app.errorhandler(400)
     def bad_request(e):
         if request.path.startswith('/api/'):
@@ -48,7 +41,6 @@ def create_app(config_class=Config):
             return jsonify({'error': 'Internal Server Error', 'message': 'An unexpected error occurred.'}), 500
         return 'Internal Server Error', 500
 
-    # Auto-create tables and auto-seed 581 foods on startup
     with app.app_context():
         db.create_all()
         from seed_data import seed_foods_if_empty

@@ -1,12 +1,9 @@
-"""Database initialization and seeding utilities for NutriStar."""
-
 from database import db
 from models import Food, User, Profile
 from data.foods import FOODS
 
-
 def seed_foods_if_empty():
-    """Seeds master 581 Indian foods into SQLite if table is empty."""
+                                                                      
     try:
         count = Food.query.count()
         if count == 0:
@@ -39,14 +36,12 @@ def seed_foods_if_empty():
         print(f"Seed error: {e}")
         db.session.rollback()
 
-
 def seed_database():
     from app import create_app
     app = create_app()
     with app.app_context():
         db.create_all()
         seed_foods_if_empty()
-
 
 if __name__ == '__main__':
     seed_database()

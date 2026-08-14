@@ -12,7 +12,7 @@
     {% block head %}{% endblock %}
 </head>
 <body>
-    <!-- Desktop Top Navigation -->
+    
     <header class="top-nav">
         <div class="top-nav-inner">
             <a href="{{ url_for('routes.dashboard') }}" class="brand">
@@ -40,7 +40,7 @@
         </div>
     </header>
 
-    <!-- Flash Messages Container -->
+    
     <div class="flash-container">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -51,12 +51,12 @@
         {% endwith %}
     </div>
 
-    <!-- Main Content -->
+    
     <main class="main-wrapper">
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Mobile Fixed Bottom Navigation -->
+    
     <nav class="mobile-bottom-nav">
         <a href="{{ url_for('routes.dashboard') }}" class="mobile-nav-item {% if request.path == '/dashboard' %}active{% endif %}">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
