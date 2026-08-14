@@ -122,8 +122,8 @@ AI was used as a development tool to assist with implementation efficiency, whil
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/sarthakargade9166-max/nutritrack-flask.git
-   cd nutritrack-flask
+   git clone https://github.com/sarthakargade9166-max/NutriStar.git
+   cd NutriStar
    ```
 
 2. **Create and activate a virtual environment**:
