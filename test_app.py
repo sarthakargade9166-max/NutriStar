@@ -3,6 +3,7 @@
 import unittest
 import json
 from app import create_app
+from data.foods import FOODS, get_food_by_id, search_foods, get_foods_by_category
 
 
 class NutriTrackSecurityAndFunctionalityTests(unittest.TestCase):
@@ -30,7 +31,30 @@ class NutriTrackSecurityAndFunctionalityTests(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         data = res.get_json()
         self.assertIsInstance(data, list)
-        self.assertGreater(len(data), 50)
+        self.assertEqual(len(data), 581, f"Expected 581 foods from nutrisar master database, got {len(data)}")
+
+    def test_food_database_details_and_dual_casing(self):
+        self.assertEqual(len(FOODS), 581)
+        
+        # Test sample food with rich details
+        pav = get_food_by_id('pav-normal')
+        self.assertIsNotNone(pav)
+        self.assertEqual(pav['name'], 'Normal Pav')
+        self.assertEqual(pav['name_hindi'], 'सामान्य पाव')
+        self.assertEqual(pav['nameHindi'], 'सामान्य पाव')
+        self.assertEqual(pav['calories_per_100g'], 268.0)
+        self.assertEqual(pav['caloriesPer100g'], 268.0)
+        self.assertEqual(pav['protein_per_100g'], 8.2)
+        self.assertEqual(pav['grams_per_piece'], 35.0)
+        self.assertEqual(pav['gramsPerPiece'], 35.0)
+        self.assertEqual(pav['sugar_per_100g'], 3.0)
+        self.assertEqual(pav['sodium_mg_per_100g'], 480.0)
+
+        # Test brand / specialized items
+        chitale = get_food_by_id('chitale-cow-milk')
+        self.assertIsNotNone(chitale)
+        self.assertIn('Chitale', chitale['name'])
+        self.assertEqual(chitale['name_hindi'], 'चितळे गाईचे दूध')
 
     def test_api_foods_search_and_bounds(self):
         # Normal search
@@ -39,6 +63,18 @@ class NutriTrackSecurityAndFunctionalityTests(unittest.TestCase):
         data = res.get_json()
         self.assertIsInstance(data, list)
         self.assertTrue(any('roti' in f['name'].lower() or any('roti' in a.lower() for a in f.get('aliases', [])) for f in data))
+
+        # Brand search
+        res_chitale = self.client.get('/api/foods/search?q=chitale')
+        self.assertEqual(res_chitale.status_code, 200)
+        chitale_data = res_chitale.get_json()
+        self.assertGreaterEqual(len(chitale_data), 3)
+
+        # Category search
+        res_cat = self.client.get('/api/foods/search?category=dairy')
+        self.assertEqual(res_cat.status_code, 200)
+        dairy_data = res_cat.get_json()
+        self.assertTrue(all(f['category'] == 'dairy' for f in dairy_data))
 
         # Extreme length query sanitization
         long_query = 'a' * 500
@@ -74,7 +110,7 @@ class NutriTrackSecurityAndFunctionalityTests(unittest.TestCase):
         self.assertGreater(data_extreme['calories_kcal'], 500)
 
     def test_api_nutrition_calculate_and_negative_rejection(self):
-        # Valid calculation
+        # Valid calculation for piece
         payload = {
             'food_id': 'chapati',
             'quantity': 2,
@@ -84,7 +120,21 @@ class NutriTrackSecurityAndFunctionalityTests(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         data = res.get_json()
         self.assertIn('calories', data)
+        self.assertIn('fiber', data)
         self.assertGreater(data['calories'], 100)
+
+        # Valid calculation for pav (35g per piece)
+        pav_payload = {
+            'food_id': 'pav-normal',
+            'quantity': 2,
+            'unit': 'piece'
+        }
+        res_pav = self.client.post('/api/nutrition/calculate', json=pav_payload)
+        self.assertEqual(res_pav.status_code, 200)
+        pav_data = res_pav.get_json()
+        self.assertEqual(pav_data['grams'], 70.0)
+        self.assertIn('sugar', pav_data)
+        self.assertIn('sodium', pav_data)
 
         # Negative quantity rejection (Business logic defense)
         negative_payload = {

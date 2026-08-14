@@ -456,7 +456,8 @@ a { color: inherit; text-decoration: none; }
   border-color: var(--border-strong);
 }
 
-.chip.active {
+.chip.active,
+.chip-active {
   background: #ffffff;
   color: #000000;
   border-color: #ffffff;
