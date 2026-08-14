@@ -1,4 +1,4 @@
-# NutriTrack
+# NutriStar
 
 A clinical, minimalist Indian food nutrition and macronutrient tracker built with Flask.
 

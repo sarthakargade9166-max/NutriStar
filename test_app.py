@@ -1,4 +1,4 @@
-"""Comprehensive Unit, Integration & Security Tests for NutriTrack Flask App"""
+"""Comprehensive Unit, Integration & Security Tests for NutriStar Flask App"""
 
 import unittest
 import json
@@ -6,7 +6,7 @@ from app import create_app
 from data.foods import FOODS, get_food_by_id, search_foods, get_foods_by_category
 
 
-class NutriTrackSecurityAndFunctionalityTests(unittest.TestCase):
+class NutriStarSecurityAndFunctionalityTests(unittest.TestCase):
     def setUp(self):
         self.app = create_app()
         self.app.config['TESTING'] = True
@@ -31,7 +31,7 @@ class NutriTrackSecurityAndFunctionalityTests(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         data = res.get_json()
         self.assertIsInstance(data, list)
-        self.assertEqual(len(data), 581, f"Expected 581 foods from nutrisar master database, got {len(data)}")
+        self.assertEqual(len(data), 581, f"Expected 581 foods from nutristar master database, got {len(data)}")
 
     def test_food_database_details_and_dual_casing(self):
         self.assertEqual(len(FOODS), 581)

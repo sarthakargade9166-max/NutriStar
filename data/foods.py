@@ -1,5 +1,5 @@
-"""NutriTrack Indian Food Database — Complete 581 Foods with Granular Micronutrient and Portion Metadata.
-Directly ported from NutriSar master database with dual-case (snake_case + camelCase) interoperability.
+"""NutriStar Indian Food Database — Complete 581 Foods with Granular Micronutrient and Portion Metadata.
+Directly ported from NutriStar master database with dual-case (snake_case + camelCase) interoperability.
 """
 
 import json

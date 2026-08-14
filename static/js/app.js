@@ -1,5 +1,5 @@
 /**
- * NutriTrack - Core Storage & State Management
+ * NutriStar - Core Storage & State Management
  * Strict Monochrome Minimal System with Defensive XSS Sanitization
  */
 

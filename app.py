@@ -1,4 +1,4 @@
-"""NutriTrack — Flask Application with Security Middleware"""
+"""NutriStar — Flask Application with Security Middleware"""
 
 from flask import Flask, jsonify, request
 from config import Config

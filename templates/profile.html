@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Profile — NutriTrack{% endblock %}
+{% block title %}Profile — NutriStar{% endblock %}
 
 {% block content %}
 <div style="max-width: 680px; margin: 0 auto;">
@@ -188,7 +188,7 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `nutritrack_backup_${Storage.getTodayDateString()}.json`;
+        a.download = `nutristar_backup_${Storage.getTodayDateString()}.json`;
         a.click();
         URL.revokeObjectURL(url);
         showToast('Backup downloaded');
