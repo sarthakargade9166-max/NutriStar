@@ -218,8 +218,8 @@ def history():
 
 @routes.route('/history/<date_str>')
 def history_day(date_str):
-    if not re.match(r'^\d{4}-\d{2}-\d{2}$', date_str):
-        flash('Invalid date format.', 'error')
+    if not validate_date_in_rolling_window(date_str):
+        flash('Requested date is outside the allowable 10-day history window.', 'error')
         return redirect(url_for('routes.history'))
 
     user = get_default_user()

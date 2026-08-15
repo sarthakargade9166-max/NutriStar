@@ -22,8 +22,7 @@ def create_app(config_class=Config):
         if trusted and not app.config.get('TESTING'):
             req_host = request.host.split(':')[0].lower()
             allowed = [h.lower() for h in trusted]
-            is_prod = app.config.get('SESSION_COOKIE_SECURE', False)
-            if req_host not in allowed and (is_prod or req_host not in ['localhost', '127.0.0.1']):
+            if req_host not in allowed:
                 return jsonify({'error': 'Bad Request', 'message': 'Untrusted host header.'}), 400
 
     @app.before_request
@@ -57,10 +56,10 @@ def create_app(config_class=Config):
         if app.config.get('SESSION_COOKIE_SECURE') or request.is_secure:
             response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
 
-        # Content Security Policy: whitelist self, fonts from Google, and local static assets
+        # Content Security Policy: strictly allow self for scripts, self+google for fonts & styles
         csp_directives = [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline'",
+            "script-src 'self'",
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
             "font-src 'self' https://fonts.gstatic.com",
             "img-src 'self' data:",
@@ -106,7 +105,6 @@ def create_app(config_class=Config):
 
 if __name__ == '__main__':
     app = create_app()
-    # Read debug setting from environment; default False in standalone execution
     is_debug = os.environ.get('FLASK_DEBUG', 'False').lower() in ['true', '1', 't']
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=is_debug, port=port)

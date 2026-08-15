@@ -109,21 +109,3 @@
     </div>
 </div>
 {% endblock %}
-
-{% block scripts %}
-<script>
-    let activeMealType = "{{ default_meal }}";
-
-    function selectMealTab(mealKey) {
-        activeMealType = mealKey;
-        document.querySelectorAll('.meal-tab-btn').forEach(btn => {
-            if (btn.getAttribute('data-meal') === mealKey) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
-        });
-        document.getElementById('selected-meal-type').value = mealKey;
-    }
-</script>
-{% endblock %}

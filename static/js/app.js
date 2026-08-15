@@ -381,3 +381,28 @@ async function handleDeleteLoggedItem() {
         alert('Network error while deleting item.');
     }
 }
+
+function selectMealTab(mealKey) {
+    const mealInput = document.getElementById('selected-meal-type');
+    if (mealInput) {
+        mealInput.value = mealKey;
+    }
+    document.querySelectorAll('.meal-tab-btn').forEach(btn => {
+        if (btn.getAttribute('data-meal') === mealKey) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    initDateControls();
+    document.querySelectorAll('.meal-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const meal = btn.getAttribute('data-meal');
+            if (meal) selectMealTab(meal);
+        });
+    });
+});
+

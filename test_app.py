@@ -156,6 +156,8 @@ class TestNutriStarApp(unittest.TestCase):
         csp = response.headers.get('Content-Security-Policy')
         self.assertIsNotNone(csp)
         self.assertIn("default-src 'self'", csp)
+        self.assertIn("script-src 'self'", csp)
+        self.assertNotIn("script-src 'self' 'unsafe-inline'", csp)
         self.assertIn("fonts.googleapis.com", csp)
         self.assertIn("fonts.gstatic.com", csp)
         self.assertIn("frame-ancestors 'none'", csp)
@@ -179,10 +181,25 @@ class TestNutriStarApp(unittest.TestCase):
 
     def test_history_day_view(self):
         today = get_ist_today()
-        res = self.client.get(f'/history/{today}')
-        self.assertEqual(res.status_code, 200)
+        # 1. Valid date within 10-day rolling window succeeds
+        res_valid = self.client.get(f'/history/{today}')
+        self.assertEqual(res_valid.status_code, 200)
 
-        # Malformed date redirects cleanly
+        # 2. Out-of-window past date (>10 days ago) must be rejected with 302 redirect
+        old_date = (datetime.now() - timedelta(days=20)).strftime('%Y-%m-%d')
+        res_old = self.client.get(f'/history/{old_date}')
+        self.assertEqual(res_old.status_code, 302)
+        with self.client.session_transaction() as sess:
+            self.assertNotEqual(sess.get('active_date'), old_date)
+
+        # 3. Future date must be rejected with 302 redirect
+        future_date = (datetime.now() + timedelta(days=5)).strftime('%Y-%m-%d')
+        res_future = self.client.get(f'/history/{future_date}')
+        self.assertEqual(res_future.status_code, 302)
+        with self.client.session_transaction() as sess:
+            self.assertNotEqual(sess.get('active_date'), future_date)
+
+        # 4. Malformed date format redirects cleanly
         res_bad = self.client.get('/history/not-a-valid-date')
         self.assertEqual(res_bad.status_code, 302)
 
@@ -340,6 +357,22 @@ importlib.reload(config)
         proc = subprocess.run([sys.executable, '-c', script], capture_output=True, text=True)
         self.assertNotEqual(proc.returncode, 0)
         self.assertIn('CRITICAL SECURITY ERROR', proc.stderr)
+
+    def test_production_trusted_hosts_missing_fails_startup(self):
+        import subprocess
+        import sys
+        script = '''
+import os
+os.environ['FLASK_ENV'] = 'production'
+os.environ['SECRET_KEY'] = 'test-prod-secret-123'
+os.environ['TRUSTED_HOSTS'] = ''
+import importlib
+import config
+importlib.reload(config)
+'''
+        proc = subprocess.run([sys.executable, '-c', script], capture_output=True, text=True)
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn('CRITICAL SECURITY ERROR: TRUSTED_HOSTS', proc.stderr)
 
     def test_untrusted_host_rejected(self):
         class HostConfig(Config):

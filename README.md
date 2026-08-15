@@ -82,7 +82,7 @@ NutriStar/
 
 1. **User logs food**: The user selects a meal category (breakfast, lunch, snack, dinner) and searches for an item.
 2. **Serving selection**: The user enters a quantity and selects a household unit (katori, piece, cup, glass, ml, grams).
-3. **Calculation**: The calculation engine computes exact calories and macronutrients based on the reference portion grammage.
+3. **Calculation**: The calculation engine computes calories and macronutrients based on the reference portion grammage.
 4. **Storage**: The entry is saved to the SQLite database linked to the user's isolated guest session.
 5. **Dashboard update**: Daily totals, progress bars, and remaining calories update immediately.
 
