@@ -19,7 +19,8 @@ if is_production and not secret_key:
 class Config:
     # Environment-backed secret key; uses local development fallback only in non-production mode
     SECRET_KEY = secret_key or 'nutristar-dev-only-secret-key-local-environment'
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', f"sqlite:///{os.path.join(BASE_DIR, 'instance', 'nutristar.db')}")
+    db_path = os.path.join(BASE_DIR, 'instance', 'nutristar.db').replace('\\', '/')
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', f"sqlite:///{db_path}")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     TEMPLATES_AUTO_RELOAD = not is_production
 
@@ -27,3 +28,6 @@ class Config:
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
     SESSION_COOKIE_SECURE = is_production or os.environ.get('SESSION_COOKIE_SECURE', 'False').lower() in ['true', '1', 't']
+
+    # Trusted Hosts validation (comma-separated list for production)
+    TRUSTED_HOSTS = [h.strip() for h in os.environ.get('TRUSTED_HOSTS', '').split(',') if h.strip()]

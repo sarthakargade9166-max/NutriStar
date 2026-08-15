@@ -17,6 +17,16 @@ def create_app(config_class=Config):
     app.register_blueprint(routes)
 
     @app.before_request
+    def validate_host():
+        trusted = app.config.get('TRUSTED_HOSTS')
+        if trusted and not app.config.get('TESTING'):
+            req_host = request.host.split(':')[0].lower()
+            allowed = [h.lower() for h in trusted]
+            is_prod = app.config.get('SESSION_COOKIE_SECURE', False)
+            if req_host not in allowed and (is_prod or req_host not in ['localhost', '127.0.0.1']):
+                return jsonify({'error': 'Bad Request', 'message': 'Untrusted host header.'}), 400
+
+    @app.before_request
     def manage_csrf():
         # Ensure session contains a cryptographic CSRF token
         if 'csrf_token' not in session:
@@ -42,6 +52,10 @@ def create_app(config_class=Config):
         response.headers['X-Frame-Options'] = 'DENY'
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
         response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+
+        # Add HSTS in production/HTTPS environments
+        if app.config.get('SESSION_COOKIE_SECURE') or request.is_secure:
+            response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
 
         # Content Security Policy: whitelist self, fonts from Google, and local static assets
         csp_directives = [

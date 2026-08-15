@@ -106,15 +106,17 @@ The architecture, feature decisions, integration, testing, and final review were
 
 AI was used as a development tool to assist with implementation efficiency, while all code, routes, and logic were verified and tested by the developer.
 
-## Security
+## Security & Architecture
 
-- **Secret Key & Production Hardening**: In production mode, `SECRET_KEY` is strictly required from environment variables (`config.py`); startup immediately halts if unset.
+- **Session & Identity Model**: NutriStar operates with an anonymous guest session model (cryptographic session UUID linked to an isolated database profile) allowing instant, zero-friction tracking without requiring public password registration.
+- **Secret Key Hardening**: In production mode, `SECRET_KEY` is strictly required from environment variables (`config.py`); server startup halts if unset.
 - **Session & Cookie Security**: `SESSION_COOKIE_HTTPONLY = True`, `SESSION_COOKIE_SAMESITE = 'Lax'`, and `SESSION_COOKIE_SECURE = True` under production/HTTPS.
 - **CSRF Protection**: Synchronizer token pattern enforced across all state-changing routes (`POST`, `PUT`, `DELETE`) via hidden form tokens and `X-CSRFToken` request headers.
 - **Content Security Policy (CSP)**: Explicit policy whitelisting application assets, Google Fonts, and blocking clickjacking via `frame-ancestors 'none'`.
-- **HTTP Security Headers**: Enforces `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, and `Permissions-Policy: geolocation=(), microphone=(), camera=()`.
+- **HSTS & Security Headers**: Enforces `Strict-Transport-Security` in production HTTPS, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, and `Permissions-Policy: geolocation=(), microphone=(), camera=()`.
+- **Trusted Host Validation**: Host header validation via configurable `TRUSTED_HOSTS` in production.
 - **User Isolation & IDOR Defense**: Strict user-scoped database queries (`user_id == user.id`) on all read, update, delete, and export operations.
-- **Server-Side Input Validation**: Strict whitelisting on meal categories (`breakfast`, `lunch`, `snack`, `dinner`), portion bounds (0.01 to 1000), biometrics, and 10-day rolling date window restrictions.
+- **Server-Side Input Validation**: Strict whitelisting on meal categories (`breakfast`, `lunch`, `snack`, `dinner`), serving units, portion bounds (0.01 to 1000), biometrics, and 10-day rolling date window restrictions.
 - **SQL Injection Defense**: Parameterized SQLAlchemy ORM queries exclusively.
 - **XSS Defense**: Jinja2 server-side auto-escaping and client-side DOM escaping (`escapeHtml`).
 

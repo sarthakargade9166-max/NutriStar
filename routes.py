@@ -1,4 +1,5 @@
 import uuid
+import secrets
 import re
 from datetime import datetime, timedelta
 import pytz
@@ -13,6 +14,7 @@ from nutrition import (
     get_ist_today,
     get_ist_default_meal,
     get_rolling_10_days,
+    UNIT_DEFINITIONS,
 )
 from seed_data import seed_foods_if_empty
 
@@ -25,10 +27,10 @@ ALLOWED_GOAL_MODES = {'rate', 'timeline'}
 
 
 def validate_date_in_rolling_window(date_str):
-    if not date_str or not re.match(r'^\d{4}-\d{2}-\d{2}$', date_str):
+    if not date_str or not re.match(r'^\d{4}-\d{2}-\d{2}$', str(date_str)):
         return False
     try:
-        dt = datetime.strptime(date_str, '%Y-%m-%d').date()
+        dt = datetime.strptime(str(date_str), '%Y-%m-%d').date()
         ist = pytz.timezone('Asia/Kolkata')
         today_ist = datetime.now(ist).date()
         oldest_allowed = today_ist - timedelta(days=9)
@@ -45,6 +47,17 @@ def validate_quantity(qty):
         return False
 
 
+def validate_unit_for_food(food, unit):
+    if not unit:
+        return False
+    u = str(unit).strip().lower()
+    if u not in UNIT_DEFINITIONS:
+        return False
+    valid_options = {opt['value'].lower() for opt in get_unit_options(food)}
+    valid_options.update({'g', 'grams', 'serving', (food.serving_unit or 'serving').lower()})
+    return u in valid_options
+
+
 def get_default_user():
     if 'guest_uuid' not in session:
         session['guest_uuid'] = str(uuid.uuid4())
@@ -54,7 +67,8 @@ def get_default_user():
 
     if not user:
         user = User(email=email)
-        user.set_password('nutristar')
+        # Generate unpredictable random password hash per guest session
+        user.set_password(secrets.token_urlsafe(32))
         db.session.add(user)
         db.session.commit()
 
@@ -426,7 +440,7 @@ def api_calculate():
     data = request.get_json() or {}
     food_id = data.get('food_id')
     quantity = data.get('quantity', 1.0)
-    unit = data.get('unit', 'serving')
+    unit = str(data.get('unit', 'serving')).strip()
 
     if not validate_quantity(quantity):
         return jsonify({'error': 'Bad Request', 'message': 'Invalid portion quantity.'}), 400
@@ -435,7 +449,10 @@ def api_calculate():
     if not food:
         return jsonify({'error': 'Not Found', 'message': 'Food not found.'}), 404
 
-    nutrition = calculate_food_nutrition(food, float(quantity), str(unit))
+    if not validate_unit_for_food(food, unit):
+        return jsonify({'error': 'Bad Request', 'message': f'Unsupported serving unit for {food.name}.'}), 400
+
+    nutrition = calculate_food_nutrition(food, float(quantity), unit)
     return jsonify(nutrition)
 
 
@@ -447,7 +464,7 @@ def api_log_meal():
     food_id = data.get('food_id')
     meal_type = str(data.get('meal_type', 'lunch')).lower()
     quantity_raw = data.get('quantity', 1.0)
-    unit = str(data.get('unit', 'serving'))
+    unit = str(data.get('unit', 'serving')).strip()
     date_str = data.get('date') or session.get('active_date') or get_ist_today()
 
     if meal_type not in ALLOWED_MEAL_TYPES:
@@ -462,6 +479,9 @@ def api_log_meal():
     food = db.session.get(Food, food_id)
     if not food:
         return jsonify({'error': 'Not Found', 'message': 'Food item not found.'}), 404
+
+    if not validate_unit_for_food(food, unit):
+        return jsonify({'error': 'Bad Request', 'message': f'Unsupported serving unit for {food.name}.'}), 400
 
     quantity = float(quantity_raw)
     nutrition = calculate_food_nutrition(food, quantity, unit)
@@ -503,7 +523,7 @@ def api_manage_meal_item(item_id):
     if request.method == 'PUT':
         data = request.get_json() or {}
         quantity_raw = data.get('quantity', item.quantity)
-        unit = str(data.get('unit', item.unit))
+        unit = str(data.get('unit', item.unit)).strip()
         meal_type = str(data.get('meal_type', item.meal_type)).lower()
 
         if meal_type not in ALLOWED_MEAL_TYPES:
@@ -513,33 +533,36 @@ def api_manage_meal_item(item_id):
             return jsonify({'error': 'Bad Request', 'message': 'Invalid quantity.'}), 400
 
         food = db.session.get(Food, item.food_id)
-        if food:
-            quantity = float(quantity_raw)
-            nutrition = calculate_food_nutrition(food, quantity, unit)
-            item.quantity = quantity
-            item.unit = unit
-            item.meal_type = meal_type
-            item.grams = nutrition['grams']
-            item.calories = nutrition['calories']
-            item.protein = nutrition['protein']
-            item.carbs = nutrition['carbs']
-            item.fat = nutrition['fat']
-            item.fiber = nutrition['fiber']
-            db.session.commit()
-            return jsonify({'success': True, 'item': item.to_dict()})
-        else:
+        if not food:
             return jsonify({'error': 'Error', 'message': 'Food reference not found.'}), 400
+
+        if not validate_unit_for_food(food, unit):
+            return jsonify({'error': 'Bad Request', 'message': f'Unsupported serving unit for {food.name}.'}), 400
+
+        quantity = float(quantity_raw)
+        nutrition = calculate_food_nutrition(food, quantity, unit)
+        item.quantity = quantity
+        item.unit = unit
+        item.meal_type = meal_type
+        item.grams = nutrition['grams']
+        item.calories = nutrition['calories']
+        item.protein = nutrition['protein']
+        item.carbs = nutrition['carbs']
+        item.fat = nutrition['fat']
+        item.fiber = nutrition['fiber']
+        db.session.commit()
+        return jsonify({'success': True, 'item': item.to_dict()})
 
 
 @routes.route('/api/active-date', methods=['GET', 'POST'])
 def api_active_date():
     if request.method == 'POST':
         data = request.get_json() or {}
-        new_date = data.get('date')
-        if new_date and re.match(r'^\d{4}-\d{2}-\d{2}$', str(new_date)):
-            session['active_date'] = str(new_date)
-            return jsonify({'success': True, 'active_date': str(new_date)})
-        return jsonify({'error': 'Bad Request', 'message': 'Invalid date format (expected YYYY-MM-DD).' }), 400
+        new_date = str(data.get('date', '')).strip()
+        if validate_date_in_rolling_window(new_date):
+            session['active_date'] = new_date
+            return jsonify({'success': True, 'active_date': new_date})
+        return jsonify({'error': 'Bad Request', 'message': 'Date must be within the allowable 10-day rolling window.'}), 400
 
     return jsonify({'active_date': session.get('active_date') or get_ist_today()})
 

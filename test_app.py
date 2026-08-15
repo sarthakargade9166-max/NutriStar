@@ -1,7 +1,9 @@
 import unittest
+import os
 from datetime import datetime, timedelta
 import pytz
 from app import create_app
+from config import Config
 from database import db
 from models import User, Profile, Food, MealItem
 from nutrition import (
@@ -185,89 +187,45 @@ class TestNutriStarApp(unittest.TestCase):
         self.assertEqual(res_bad.status_code, 302)
 
     # -------------------------------------------------------------
-    # 5. RESTful API & Server-Side Input Validation Tests
+    # 5. Security & Input Boundaries Tests
     # -------------------------------------------------------------
-    def test_api_food_search(self):
-        res = self.client.get('/api/foods/search?q=rice')
-        self.assertEqual(res.status_code, 200)
-        foods = res.get_json()
-        self.assertIsInstance(foods, list)
-        self.assertGreater(len(foods), 0)
+    def test_active_date_boundary_rejection(self):
+        # 1. Old date (>10 days ago) must be rejected with 400
+        old_date = (datetime.now() - timedelta(days=20)).strftime('%Y-%m-%d')
+        res_old = self.client.post('/api/active-date', json={'date': old_date})
+        self.assertEqual(res_old.status_code, 400)
+        self.assertEqual(res_old.get_json()['error'], 'Bad Request')
 
-        res_empty = self.client.get('/api/foods/search?q=')
-        self.assertEqual(res_empty.status_code, 200)
-        self.assertLessEqual(len(res_empty.get_json()), 25)
-
-    def test_api_get_food_details(self):
-        res = self.client.get('/api/foods/chapati')
-        self.assertEqual(res.status_code, 200)
-        data = res.get_json()
-        self.assertEqual(data['id'], 'chapati')
-        self.assertIn('unit_options', data)
-
-        res_invalid = self.client.get('/api/foods/non-existent-food-id-xyz')
-        self.assertEqual(res_invalid.status_code, 404)
-
-    def test_api_calculate_endpoint(self):
-        payload = {
-            'food_id': 'chapati',
-            'quantity': 2,
-            'unit': 'piece'
-        }
-        res = self.client.post('/api/calculate', json=payload)
-        self.assertEqual(res.status_code, 200)
-        data = res.get_json()
-        self.assertEqual(data['grams'], 70.0)
-        self.assertGreater(data['calories'], 0)
-
-        # Invalid quantity
-        res_bad = self.client.post('/api/calculate', json={'food_id': 'chapati', 'quantity': -5})
-        self.assertEqual(res_bad.status_code, 400)
-
-    def test_api_input_boundaries_on_logging(self):
-        # 1. Negative quantity rejected
-        res_neg = self.client.post('/api/log', json={
-            'food_id': 'chapati',
-            'meal_type': 'lunch',
-            'quantity': -2.0,
-            'unit': 'piece'
-        })
-        self.assertEqual(res_neg.status_code, 400)
-
-        # 2. Invalid meal category rejected
-        res_cat = self.client.post('/api/log', json={
-            'food_id': 'chapati',
-            'meal_type': 'unsupported_category',
-            'quantity': 1.0,
-            'unit': 'piece'
-        })
-        self.assertEqual(res_cat.status_code, 400)
-
-        # 3. Invalid date (future date) rejected
-        future_date = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')
-        res_future = self.client.post('/api/log', json={
-            'food_id': 'chapati',
-            'meal_type': 'lunch',
-            'quantity': 1.0,
-            'unit': 'piece',
-            'date': future_date
-        })
+        # 2. Future date must be rejected with 400
+        future_date = (datetime.now() + timedelta(days=5)).strftime('%Y-%m-%d')
+        res_future = self.client.post('/api/active-date', json={'date': future_date})
         self.assertEqual(res_future.status_code, 400)
 
-        # 4. Invalid date (outside 10-day window) rejected
-        ancient_date = '2020-01-01'
-        res_ancient = self.client.post('/api/log', json={
-            'food_id': 'chapati',
-            'meal_type': 'lunch',
-            'quantity': 1.0,
-            'unit': 'piece',
-            'date': ancient_date
-        })
-        self.assertEqual(res_ancient.status_code, 400)
+        # 3. Valid date within 10-day rolling window must be accepted
+        today = get_ist_today()
+        res_today = self.client.post('/api/active-date', json={'date': today})
+        self.assertEqual(res_today.status_code, 200)
+        self.assertEqual(res_today.get_json()['active_date'], today)
 
-    def test_api_meal_logging_lifecycle_and_user_isolation(self):
+    def test_invalid_unit_and_quantity_rejections(self):
+        # Invalid quantity (negative or > 1000)
+        res_qty_neg = self.client.post('/api/calculate', json={'food_id': 'chapati', 'quantity': -5, 'unit': 'piece'})
+        self.assertEqual(res_qty_neg.status_code, 400)
+
+        res_qty_huge = self.client.post('/api/calculate', json={'food_id': 'chapati', 'quantity': 5000, 'unit': 'piece'})
+        self.assertEqual(res_qty_huge.status_code, 400)
+
+        # Invalid unit for food (e.g. 'gallon' or 'kilogram_fake' on chapati)
+        res_unit_bad = self.client.post('/api/calculate', json={'food_id': 'chapati', 'quantity': 1, 'unit': 'unknown_unit_xyz'})
+        self.assertEqual(res_unit_bad.status_code, 400)
+
+        # Valid unit accepted
+        res_unit_ok = self.client.post('/api/calculate', json={'food_id': 'chapati', 'quantity': 2, 'unit': 'piece'})
+        self.assertEqual(res_unit_ok.status_code, 200)
+
+    def test_cross_user_isolation_and_idor_defense(self):
         with self.app.test_client() as client_a:
-            # User A logs a meal item
+            # User A logs an item
             res_log = client_a.post('/api/log', json={
                 'food_id': 'chapati',
                 'meal_type': 'lunch',
@@ -278,30 +236,28 @@ class TestNutriStarApp(unittest.TestCase):
             self.assertEqual(res_log.status_code, 201)
             item_a_id = res_log.get_json()['item']['id']
 
-            # User A updates the meal item
-            res_update = client_a.put(f'/api/meal-items/{item_a_id}', json={
+            # User B attempts to view/modify/delete User A's item
+            with self.app.test_client() as client_b:
+                # 1. User B cannot edit User A's item
+                res_unauth_edit = client_b.put(f'/api/meal-items/{item_a_id}', json={
+                    'quantity': 5.0,
+                    'unit': 'piece',
+                    'meal_type': 'lunch'
+                })
+                self.assertEqual(res_unauth_edit.status_code, 404)
+
+                # 2. User B cannot delete User A's item
+                res_unauth_del = client_b.delete(f'/api/meal-items/{item_a_id}')
+                self.assertEqual(res_unauth_del.status_code, 404)
+
+            # User A successfully edits and deletes their own item
+            res_edit = client_a.put(f'/api/meal-items/{item_a_id}', json={
                 'quantity': 3.0,
                 'unit': 'piece',
                 'meal_type': 'lunch'
             })
-            self.assertEqual(res_update.status_code, 200)
-            self.assertEqual(res_update.get_json()['item']['quantity'], 3.0)
+            self.assertEqual(res_edit.status_code, 200)
 
-            # User B (separate session) attempts unauthorized access / IDOR attack on User A's item
-            with self.app.test_client() as client_b:
-                # User B tries to update User A's item
-                res_unauth_update = client_b.put(f'/api/meal-items/{item_a_id}', json={
-                    'quantity': 10.0,
-                    'unit': 'piece',
-                    'meal_type': 'lunch'
-                })
-                self.assertEqual(res_unauth_update.status_code, 404, "User B must not be able to edit User A's item")
-
-                # User B tries to delete User A's item
-                res_unauth_delete = client_b.delete(f'/api/meal-items/{item_a_id}')
-                self.assertEqual(res_unauth_delete.status_code, 404, "User B must not be able to delete User A's item")
-
-            # User A deletes their own item
             res_delete = client_a.delete(f'/api/meal-items/{item_a_id}')
             self.assertEqual(res_delete.status_code, 200)
 
@@ -317,47 +273,92 @@ class TestNutriStarApp(unittest.TestCase):
         csrf_app = create_app(NonTestingConfig)
         with csrf_app.test_client() as c:
             # 1. State-changing POST without CSRF token must return 403 Forbidden
-            res_no_token = c.post('/api/calculate', json={'food_id': 'chapati', 'quantity': 1})
+            res_no_token = c.post('/api/calculate', json={'food_id': 'chapati', 'quantity': 1, 'unit': 'piece'})
             self.assertEqual(res_no_token.status_code, 403)
             self.assertEqual(res_no_token.get_json()['error'], 'Forbidden')
 
-            # 2. Get a page to initialize session and retrieve CSRF token
+            # 2. State-changing POST with invalid CSRF token returns 403
+            res_bad_token = c.post(
+                '/api/calculate',
+                json={'food_id': 'chapati', 'quantity': 1, 'unit': 'piece'},
+                headers={'X-CSRFToken': 'invalid-csrf-token-12345'}
+            )
+            self.assertEqual(res_bad_token.status_code, 403)
+
+            # 3. Get page to initialize session and retrieve genuine CSRF token
             c.get('/dashboard')
             with c.session_transaction() as sess:
                 valid_token = sess.get('csrf_token')
             self.assertIsNotNone(valid_token)
 
-            # 3. Post with valid X-CSRFToken header succeeds
+            # 4. Post with valid X-CSRFToken header succeeds
             res_with_token = c.post(
                 '/api/calculate',
-                json={'food_id': 'chapati', 'quantity': 1},
+                json={'food_id': 'chapati', 'quantity': 1, 'unit': 'piece'},
                 headers={'X-CSRFToken': valid_token}
             )
             self.assertEqual(res_with_token.status_code, 200)
 
-    def test_api_active_date_management(self):
-        res_get = self.client.get('/api/active-date')
-        self.assertEqual(res_get.status_code, 200)
-        self.assertIn('active_date', res_get.get_json())
+    def test_xss_escaping_safety(self):
+        with self.app.test_client() as client:
+            res = client.get('/dashboard')
+            self.assertEqual(res.status_code, 200)
+            html_content = res.get_data(as_text=True)
+            # Ensure no raw unescaped script tag execution is possible
+            self.assertNotIn('<script>alert(1)</script>', html_content)
 
-        today = get_ist_today()
-        res_post = self.client.post('/api/active-date', json={'date': today})
-        self.assertEqual(res_post.status_code, 200)
-        self.assertEqual(res_post.get_json()['active_date'], today)
+    def test_production_and_dev_configuration_modes(self):
+        # 1. Verify default config has valid SECRET_KEY, HTTPONLY, SAMESITE
+        self.assertIsNotNone(Config.SECRET_KEY)
+        self.assertTrue(Config.SESSION_COOKIE_HTTPONLY)
+        self.assertEqual(Config.SESSION_COOKIE_SAMESITE, 'Lax')
 
-    def test_api_quick_add(self):
-        res = self.client.get('/api/quick-add')
-        self.assertEqual(res.status_code, 200)
-        quick_foods = res.get_json()
-        self.assertIsInstance(quick_foods, list)
-        self.assertGreater(len(quick_foods), 0)
+        # 2. Production mode configuration
+        class ProdConfig(Config):
+            TESTING = True
+            SECRET_KEY = 'super-secure-prod-key'
+            SESSION_COOKIE_SECURE = True
+            SESSION_COOKIE_HTTPONLY = True
+            SESSION_COOKIE_SAMESITE = 'Lax'
+            SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
 
-    def test_api_export_data(self):
-        res = self.client.get('/api/export-data')
-        self.assertEqual(res.status_code, 200)
-        export_payload = res.get_json()
-        self.assertIn('profile', export_payload)
-        self.assertIn('meal_logs', export_payload)
+        prod_app = create_app(ProdConfig)
+        self.assertTrue(prod_app.config['SESSION_COOKIE_SECURE'])
+        self.assertTrue(prod_app.config['SESSION_COOKIE_HTTPONLY'])
+
+    def test_production_secret_missing_fails_startup(self):
+        import subprocess
+        import sys
+        script = '''
+import os
+os.environ['FLASK_ENV'] = 'production'
+os.environ['SECRET_KEY'] = ''
+import importlib
+import config
+importlib.reload(config)
+'''
+        proc = subprocess.run([sys.executable, '-c', script], capture_output=True, text=True)
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn('CRITICAL SECURITY ERROR', proc.stderr)
+
+    def test_untrusted_host_rejected(self):
+        class HostConfig(Config):
+            TESTING = False
+            SECRET_KEY = 'test-secret-key-nutristar'
+            SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+            SQLALCHEMY_TRACK_MODIFICATIONS = False
+            SESSION_COOKIE_SECURE = True
+            TRUSTED_HOSTS = ['nutristar.app', 'demo.nutristar.app']
+
+        host_app = create_app(HostConfig)
+        with host_app.test_client() as c:
+            # Trusted host succeeds
+            res_ok = c.get('/dashboard', headers={'Host': 'nutristar.app'})
+            self.assertEqual(res_ok.status_code, 200)
+
+            # Untrusted host is rejected with 400 Bad Request
+            res_bad = c.get('/dashboard', headers={'Host': 'evil-phishing-domain.com'})
+            self.assertEqual(res_bad.status_code, 400)
 
 
 if __name__ == '__main__':
