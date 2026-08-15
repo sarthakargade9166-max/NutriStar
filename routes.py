@@ -48,13 +48,17 @@ def validate_quantity(qty):
 
 
 def validate_unit_for_food(food, unit):
-    if not unit:
+    if not unit or not isinstance(unit, str):
         return False
     u = str(unit).strip().lower()
-    if u not in UNIT_DEFINITIONS:
+    if not u or len(u) > 50:
         return False
     valid_options = {opt['value'].lower() for opt in get_unit_options(food)}
-    valid_options.update({'g', 'grams', 'serving', (food.serving_unit or 'serving').lower()})
+    valid_options.update({
+        'g', 'grams', 'ml', 'serving', 'piece', 'bowl', 'katori', 'cup', 'glass', 'plate',
+        'tablespoon', 'tbsp', 'teaspoon', 'tsp', 'slice', 'pack', 'package',
+        str(getattr(food, 'serving_unit', '') or '').lower()
+    })
     return u in valid_options
 
 

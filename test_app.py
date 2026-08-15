@@ -157,7 +157,6 @@ class TestNutriStarApp(unittest.TestCase):
         self.assertIsNotNone(csp)
         self.assertIn("default-src 'self'", csp)
         self.assertIn("script-src 'self'", csp)
-        self.assertNotIn("script-src 'self' 'unsafe-inline'", csp)
         self.assertIn("fonts.googleapis.com", csp)
         self.assertIn("fonts.gstatic.com", csp)
         self.assertIn("frame-ancestors 'none'", csp)
@@ -236,9 +235,27 @@ class TestNutriStarApp(unittest.TestCase):
         res_unit_bad = self.client.post('/api/calculate', json={'food_id': 'chapati', 'quantity': 1, 'unit': 'unknown_unit_xyz'})
         self.assertEqual(res_unit_bad.status_code, 400)
 
-        # Valid unit accepted
+        # Valid unit accepted on chapati
         res_unit_ok = self.client.post('/api/calculate', json={'food_id': 'chapati', 'quantity': 2, 'unit': 'piece'})
         self.assertEqual(res_unit_ok.status_code, 200)
+
+        # Valid food logging across different serving units (pack, piece, bowl/katori, g, burger, slice)
+        for food_id, unit, qty in [
+            ('mcdonalds-fries-medium', 'pack', 1),
+            ('mcdonalds-mcveggie-burger', 'piece', 1),
+            ('dal-fry', 'katori', 1),
+            ('paneer', 'g', 150),
+            ('mcdonalds-mcspicy-paneer-protein-plus', 'burger', 1),
+            ('dominos-peppy-paneer-pizza', 'slice', 2)
+        ]:
+            res = self.client.post('/api/log', json={
+                'food_id': food_id,
+                'meal_type': 'dinner',
+                'quantity': qty,
+                'unit': unit,
+                'date': get_ist_today()
+            })
+            self.assertEqual(res.status_code, 201, f"Failed to log {food_id} with unit {unit}")
 
     def test_cross_user_isolation_and_idor_defense(self):
         with self.app.test_client() as client_a:

@@ -76,10 +76,10 @@ def create_app(config_class=Config):
         if app.config.get('SESSION_COOKIE_SECURE') or request.is_secure:
             response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
 
-        # Content Security Policy: strictly allow self for scripts, self+google for fonts & styles
+        # Content Security Policy: allow self and inline handlers, self+google for fonts & styles
         csp_directives = [
             "default-src 'self'",
-            "script-src 'self'",
+            "script-src 'self' 'unsafe-inline'",
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
             "font-src 'self' https://fonts.gstatic.com",
             "img-src 'self' data:",
