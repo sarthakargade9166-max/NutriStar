@@ -166,3 +166,8 @@ AI was used as a development tool to assist with implementation efficiency, whil
 - Barcode lookup integration for packaged goods
 - Expanded regional food databases across additional cuisines
 - Meal planning and recipe builder features
+
+## Author
+
+NutriStar is an independent project developed by Sarthak.
+

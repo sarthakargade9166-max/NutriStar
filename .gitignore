@@ -21,3 +21,12 @@ instance/
 Thumbs.db
 .idea/
 .vscode/
+
+# Temporary, scratch, and debug directories
+tmp/
+temp/
+scratch/
+scratches/
+debug/
+test-output/
+
