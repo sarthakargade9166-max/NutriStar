@@ -11,82 +11,84 @@ NutriStar is a nutrition tracking web application built with Python and Flask. I
 Nutrition tracking can often feel like repetitive administrative work. People usually eat many of the same foods every week. If someone drinks tea or coffee every morning, has chapati and dal for lunch, and eats rice for dinner, logging those foods should be straightforward and quick.
 
 NutriStar focuses on user habits:
-- Fast food search with instant filtering
-- Quick Add based on recent food frequency
-- Serving sizes tailored to each food type (cups, pieces, katori/bowls, ml, grams)
-- A focused rolling history window instead of an endless archive
+- Fast food search with instant debounced filtering
+- Quick Add based on recent food frequency and recency
+- Serving sizes tailored to each food type (cups, pieces, katori/bowls, glasses, tablespoons, grams)
+- A focused 10-day rolling history window instead of an endless archive
+- Persistent active date tracking across page transitions
 
 ## Built to Be Accessible
 
-Nutrition tracking should be accessible enough to become a daily habit, not expensive enough to become a barrier.
-
-The project is designed around the idea that essential nutrition tracking should remain accessible. Core functionality like logging food, editing meals, and tracking daily macros should not require a paid subscription.
+The project is designed around the idea that essential nutrition tracking should remain accessible. Core functionality like logging food, editing meals, and tracking daily macros should not require a paid subscription or account creation friction.
 
 ## Features
 
-- **Dashboard**: Displays daily calories, remaining caloric budget, and macronutrient progress rings (Protein, Carbohydrates, and Fat).
+- **Dashboard**: Displays daily calories, remaining caloric budget, and macronutrient targets (Protein, Carbohydrates, and Fat).
 - **Food Logging**: Search through 580+ Indian foods, regional recipes, and packaged grocery items with Hindi scripts.
-- **Personalized Quick Add**: Shows top foods based on the user's recent logging frequency and recency.
-- **Food-Specific Serving Units**: Uses appropriate units for each food type (milliliters for beverages, pieces for rotis/eggs, katori/cups for rice and curries).
+- **Personalized Quick Add**: Shows top foods based on the user's 10-day logging frequency and recency, with staple fallbacks.
+- **Food-Specific Serving Units**: Contextual units for each food type (milliliters/cups/glasses for beverages, pieces for rotis/eggs, katori/cups for rice and curries, tablespoons/teaspoons for fats).
 - **Dynamic Nutrition Calculation**: Updates calories and macros automatically as portion quantities and serving units change.
-- **In-Place Food Editing**: Directly edit logged meals (adjust portions, change meal types, swap foods, or delete entries).
-- **History Calendar**: View and backfill meals across recent days with persistent viewing date navigation.
+- **In-Place Food Editing**: Directly edit logged meals (adjust portions, change meal types, or delete entries) while preserving chronological creation order.
+- **10-Day History Calendar**: View daily calorie targets, macro breakdowns, and backfill meals across recent days.
 - **Indian and Maharashtra Foods**: Over 580 items with authentic regional recipes, dual-language names, and standardized portion metrics.
 - **Profile & Goal Setup**: Set weight goals using weekly target rate (kg/week) or target timeline (total weeks) with automatic Mifflin-St Jeor TDEE calculation.
-- **Monochrome Interface**: High-contrast, minimal design system with responsive desktop and mobile navigation.
+- **Monochrome Interface**: High-contrast, minimal dark design system with responsive desktop and mobile navigation.
+- **Data Portability**: Download a full JSON export of profile biometrics, targets, and meal logs.
 
 ## Tech Stack
 
-- **Backend**: Python 3.12, Flask (Modular Blueprints)
-- **Frontend & Templating**: Jinja2 HTML Templates, Vanilla CSS, Vanilla JavaScript
-- **Calculations**: Custom Python nutrition and unit-conversion engines
-- **Storage**: Client-side storage with zero tracking and full JSON export/import capability
+- **Backend**: Python 3.12, Flask 3.0 (Modular Blueprints, Application Factory)
+- **Database & ORM**: SQLite 3, Flask-SQLAlchemy 3.1
+- **Frontend & Templating**: Jinja2 HTML Templates, Vanilla CSS3, Vanilla JavaScript (ES6+)
+- **Calculations**: Custom Python scaling algorithms and Mifflin-St Jeor TDEE engine
+- **Timezone**: `pytz` (Asia/Kolkata IST)
 - **Testing**: Python `unittest` test suite
 
 ## Project Structure
 
-```
-nutritrack-flask/
-├── app.py              # Application entry point & security middleware
+```text
+NutriStar/
+├── app.py              # Application entry point, factory & security middleware
 ├── config.py           # Configuration and environment management
-├── models.py           # Category, activity, and goal data types
+├── database.py         # SQLAlchemy database instance declaration
+├── models.py           # Relational models (User, Profile, Food, MealItem)
+├── nutrition.py        # Core calculations: units, scaling, TDEE, Quick Add
+├── routes.py           # Page routes and RESTful JSON API endpoints
+├── seed_data.py        # Database seeding utility for food catalog
+├── test_app.py         # Automated test suite (unittest)
 ├── data/
-│   └── foods.py        # 580+ Indian foods dataset and search engine
-├── nutrition/
-│   ├── calculator.py   # Nutrition calculation & gram conversion
-│   ├── targets.py      # Mifflin-St Jeor target calculation
-│   └── units.py        # Household unit to gram conversions
-├── routes/
-│   ├── api.py          # RESTful JSON endpoints with input validation
-│   └── pages.py        # Flask template routes
+│   ├── __init__.py     # Data package initializer
+│   └── foods.py        # 580+ Indian foods reference dataset
 ├── static/
-│   ├── css/styles.css  # Monochrome CSS design system
-│   └── js/app.js       # State management, local storage, XSS sanitization
+│   ├── css/style.css   # Monochrome CSS design system
+│   └── js/app.js       # Live search, async API controllers, modal logic
 ├── templates/
 │   ├── base.html       # Base shell with desktop and mobile navigation
 │   ├── dashboard.html  # Daily target overview and meal timeline
 │   ├── log_food.html   # Focused food search and logging interface
-│   ├── meals.html      # History timeline and daily meal breakdown
-│   ├── profile.html    # Personal metrics, target editor, data backups
+│   ├── history.html    # 10-day rolling history calendar
+│   ├── history_day.html# Historical single-day breakdown
+│   ├── profile.html    # Personal metrics and target editor
 │   ├── onboarding.html # Initial setup wizard
-│   └── settings.html   # Preferences and data management
+│   └── settings.html   # Preferences and data export
 ├── .env.example        # Environment variable template
 ├── .gitignore          # Repository hygiene rules
-├── requirements.txt    # Python dependencies
-└── README.md
+├── LICENSE             # MIT License
+├── NOTICE.md           # Project attribution and copyright notice
+└── requirements.txt    # Python dependencies
 ```
 
 ## How It Works
 
 1. **User logs food**: The user selects a meal category (breakfast, lunch, snack, dinner) and searches for an item.
-2. **Serving selection**: The user enters a quantity and selects a household unit (katori, piece, cup, ml, grams).
-3. **Calculation**: The server/client engine computes exact calories and macronutrients based on the reference portion grammage.
-4. **Storage**: The entry is saved to local storage for instant offline access.
-5. **Dashboard update**: Daily totals, macronutrient rings, and remaining calories update immediately.
+2. **Serving selection**: The user enters a quantity and selects a household unit (katori, piece, cup, glass, ml, grams).
+3. **Calculation**: The calculation engine computes exact calories and macronutrients based on the reference portion grammage.
+4. **Storage**: The entry is saved to the SQLite database linked to the user's isolated guest session.
+5. **Dashboard update**: Daily totals, progress bars, and remaining calories update immediately.
 
 ## Nutrition Data
 
-Nutrition values are estimates based on standard recipes, food composition tables (IFCT/USDA references), and official manufacturer labels where available.
+Nutrition values are estimates based on standard recipes, food composition tables (IFCT-2017 / USDA references), and official manufacturer labels where available.
 
 Nutrition can vary depending on:
 - Cooking methods and oils used
@@ -106,10 +108,15 @@ AI was used as a development tool to assist with implementation efficiency, whil
 
 ## Security
 
-- **Security Headers**: `app.py` enforces HTTP security headers (`X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection: 1; mode=block`, `Referrer-Policy: strict-origin-when-cross-origin`, Content Security Policy).
-- **Input Boundaries**: Strict physiological boundaries prevent invalid negative numbers or extreme values from corrupting daily totals.
-- **Zero Logging of Sensitive Data**: No personal metrics or private information are logged to server outputs.
-- **Environment Isolation**: Secret keys are loaded via environment variables in `config.py` and excluded from Git.
+- **Secret Key & Production Hardening**: In production mode, `SECRET_KEY` is strictly required from environment variables (`config.py`); startup immediately halts if unset.
+- **Session & Cookie Security**: `SESSION_COOKIE_HTTPONLY = True`, `SESSION_COOKIE_SAMESITE = 'Lax'`, and `SESSION_COOKIE_SECURE = True` under production/HTTPS.
+- **CSRF Protection**: Synchronizer token pattern enforced across all state-changing routes (`POST`, `PUT`, `DELETE`) via hidden form tokens and `X-CSRFToken` request headers.
+- **Content Security Policy (CSP)**: Explicit policy whitelisting application assets, Google Fonts, and blocking clickjacking via `frame-ancestors 'none'`.
+- **HTTP Security Headers**: Enforces `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, and `Permissions-Policy: geolocation=(), microphone=(), camera=()`.
+- **User Isolation & IDOR Defense**: Strict user-scoped database queries (`user_id == user.id`) on all read, update, delete, and export operations.
+- **Server-Side Input Validation**: Strict whitelisting on meal categories (`breakfast`, `lunch`, `snack`, `dinner`), portion bounds (0.01 to 1000), biometrics, and 10-day rolling date window restrictions.
+- **SQL Injection Defense**: Parameterized SQLAlchemy ORM queries exclusively.
+- **XSS Defense**: Jinja2 server-side auto-escaping and client-side DOM escaping (`escapeHtml`).
 
 ## Running Locally
 
@@ -150,7 +157,7 @@ AI was used as a development tool to assist with implementation efficiency, whil
    ```
    Open [http://127.0.0.1:5000](http://127.0.0.1:5000) in your browser.
 
-6. **Run the test suite**:
+6. **Run the automated test suite**:
    ```bash
    python test_app.py
    ```
@@ -170,4 +177,3 @@ AI was used as a development tool to assist with implementation efficiency, whil
 ## Author
 
 NutriStar is an independent project developed by Sarthak.
-

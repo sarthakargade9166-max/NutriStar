@@ -45,6 +45,7 @@
         </div>
 
         <form method="POST" action="{{ url_for('routes.profile') }}" class="profile-form" id="profile-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <div class="form-row">
                 <div class="form-group flex-1">
                     <label for="name">Name</label>

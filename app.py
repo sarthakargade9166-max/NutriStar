@@ -1,5 +1,6 @@
 import os
-from flask import Flask, jsonify, request
+import secrets
+from flask import Flask, jsonify, request, session, render_template
 from config import Config
 from database import db
 
@@ -15,12 +16,46 @@ def create_app(config_class=Config):
     from routes import routes
     app.register_blueprint(routes)
 
+    @app.before_request
+    def manage_csrf():
+        # Ensure session contains a cryptographic CSRF token
+        if 'csrf_token' not in session:
+            session['csrf_token'] = secrets.token_hex(32)
+
+        # Skip CSRF check in testing mode or for safe read-only methods
+        if app.config.get('TESTING') or request.method in ['GET', 'HEAD', 'OPTIONS']:
+            return None
+
+        # Verify CSRF token from request header or form data
+        header_token = request.headers.get('X-CSRFToken') or request.headers.get('X-CSRF-Token')
+        form_token = request.form.get('csrf_token')
+        expected_token = session.get('csrf_token')
+
+        if not expected_token or (header_token != expected_token and form_token != expected_token):
+            if request.path.startswith('/api/'):
+                return jsonify({'error': 'Forbidden', 'message': 'CSRF token missing or invalid.'}), 403
+            return render_template('base.html', custom_error='403 Forbidden: Invalid or missing CSRF token.'), 403
+
     @app.after_request
     def set_security_headers(response):
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['X-Frame-Options'] = 'DENY'
-        response.headers['X-XSS-Protection'] = '1; mode=block'
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+
+        # Content Security Policy: whitelist self, fonts from Google, and local static assets
+        csp_directives = [
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline'",
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+            "font-src 'self' https://fonts.gstatic.com",
+            "img-src 'self' data:",
+            "connect-src 'self'",
+            "frame-ancestors 'none'",
+            "base-uri 'self'",
+            "form-action 'self'"
+        ]
+        response.headers['Content-Security-Policy'] = '; '.join(csp_directives)
         return response
 
     @app.errorhandler(400)
@@ -28,6 +63,12 @@ def create_app(config_class=Config):
         if request.path.startswith('/api/'):
             return jsonify({'error': 'Bad Request', 'message': 'Invalid request parameters.'}), 400
         return 'Bad Request', 400
+
+    @app.errorhandler(403)
+    def forbidden(e):
+        if request.path.startswith('/api/'):
+            return jsonify({'error': 'Forbidden', 'message': 'Access forbidden.'}), 403
+        return 'Forbidden', 403
 
     @app.errorhandler(404)
     def not_found(e):
@@ -51,4 +92,7 @@ def create_app(config_class=Config):
 
 if __name__ == '__main__':
     app = create_app()
-    app.run(debug=True, port=5000)
+    # Read debug setting from environment; default False in standalone execution
+    is_debug = os.environ.get('FLASK_DEBUG', 'False').lower() in ['true', '1', 't']
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=is_debug, port=port)

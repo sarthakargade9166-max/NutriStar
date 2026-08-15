@@ -3,6 +3,21 @@ let currentFoodData = null;
 let currentEditFoodData = null;
 window.foodCache = {};
 
+function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 function initDateControls() {
     const dateInput = document.getElementById('active-date-input');
     const prevBtn = document.getElementById('btn-prev-day');
@@ -50,7 +65,10 @@ async function setActiveDate(dateStr) {
     try {
         const res = await fetch('/api/active-date', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
             body: JSON.stringify({ date: dateStr })
         });
         if (res.ok) {
@@ -105,14 +123,19 @@ function renderSearchResults(foods) {
         const servingCarb = Math.round((food.carbs_100g * food.grams_per_serving) / 100);
         const servingFat = Math.round((food.fat_100g * food.grams_per_serving) / 100);
 
+        const safeId = escapeHtml(food.id);
+        const safeName = escapeHtml(food.name);
+        const safeHindi = food.hindi_name ? escapeHtml(food.hindi_name) : '';
+        const safeUnit = escapeHtml(food.serving_unit || 'serving');
+
         return `
-            <div class="food-card" onclick="openPortionModal('${food.id}')">
+            <div class="food-card" onclick="openPortionModal('${safeId}')">
                 <div class="food-info">
                     <div class="food-title-row">
-                        <span class="food-name">${escapeHtml(food.name)}</span>
-                        ${food.hindi_name ? `<span class="food-hindi">${escapeHtml(food.hindi_name)}</span>` : ''}
+                        <span class="food-name">${safeName}</span>
+                        ${safeHindi ? `<span class="food-hindi">${safeHindi}</span>` : ''}
                     </div>
-                    <span class="food-portion text-secondary">${food.serving_size} ${food.serving_unit} (${Math.round(food.grams_per_serving)}g)</span>
+                    <span class="food-portion text-secondary">${food.serving_size} ${safeUnit} (${Math.round(food.grams_per_serving)}g)</span>
                 </div>
                 <div class="food-macros">
                     <span class="food-cal">${servingCals} kcal</span>
@@ -125,18 +148,15 @@ function renderSearchResults(foods) {
     }).join('');
 }
 
-function escapeHtml(str) {
-    if (!str) return '';
-    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-}
-
 async function openPortionModal(foodId) {
     let food = window.foodCache[foodId];
 
     try {
-        const res = await fetch(`/api/foods/${foodId}`);
-        food = await res.json();
-        window.foodCache[foodId] = food;
+        const res = await fetch(`/api/foods/${encodeURIComponent(foodId)}`);
+        if (res.ok) {
+            food = await res.json();
+            window.foodCache[foodId] = food;
+        }
     } catch (e) {
         console.error('Failed to load food details', e);
     }
@@ -168,7 +188,7 @@ async function openPortionModal(foodId) {
     ];
 
     unitSelect.innerHTML = unitOpts.map(opt => `
-        <option value="${opt.value}" ${opt.value === food.serving_unit ? 'selected' : ''}>${opt.label}</option>
+        <option value="${escapeHtml(opt.value)}" ${opt.value === food.serving_unit ? 'selected' : ''}>${escapeHtml(opt.label)}</option>
     `).join('');
 
     recalculatePortionNutrition();
@@ -188,7 +208,10 @@ async function recalculatePortionNutrition() {
     try {
         const res = await fetch('/api/calculate', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
             body: JSON.stringify({
                 food_id: currentFoodData.id,
                 quantity: quantity,
@@ -221,7 +244,10 @@ async function handleLogFoodSubmit(e) {
     try {
         const res = await fetch('/api/log', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
             body: JSON.stringify({
                 food_id: foodId,
                 meal_type: mealType,
@@ -233,12 +259,12 @@ async function handleLogFoodSubmit(e) {
         if (res.ok) {
             window.location.href = '/dashboard';
         } else {
-            alert('Failed to log food. Please try again.');
+            alert('Failed to log food. Please check input parameters.');
             btn.disabled = false;
             btn.innerText = 'Log Food';
         }
     } catch (err) {
-        alert('Something went wrong.');
+        alert('Network error while logging food.');
         btn.disabled = false;
         btn.innerText = 'Log Food';
     }
@@ -254,11 +280,11 @@ async function openEditModal(itemId, foodId, foodName, quantity, unit, mealType)
     currentEditFoodData = { id: foodId, name: foodName };
 
     try {
-        const res = await fetch(`/api/foods/${foodId}`);
+        const res = await fetch(`/api/foods/${encodeURIComponent(foodId)}`);
         const data = await res.json();
         const unitSelect = document.getElementById('edit-unit');
         unitSelect.innerHTML = (data.unit_options || []).map(opt => `
-            <option value="${opt.value}" ${opt.value === unit ? 'selected' : ''}>${opt.label}</option>
+            <option value="${escapeHtml(opt.value)}" ${opt.value === unit ? 'selected' : ''}>${escapeHtml(opt.label)}</option>
         `).join('');
     } catch (e) {
         console.error('Failed to load unit options', e);
@@ -281,7 +307,10 @@ async function recalculateEditNutrition() {
     try {
         const res = await fetch('/api/calculate', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
             body: JSON.stringify({
                 food_id: currentEditFoodData.id,
                 quantity: quantity,
@@ -308,9 +337,12 @@ async function handleEditSubmit(e) {
     const mealType = document.getElementById('edit-meal-type').value;
 
     try {
-        const res = await fetch(`/api/meal-items/${itemId}`, {
+        const res = await fetch(`/api/meal-items/${encodeURIComponent(itemId)}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
             body: JSON.stringify({
                 quantity: quantity,
                 unit: unit,
@@ -333,8 +365,11 @@ async function handleDeleteLoggedItem() {
     if (!confirm('Are you sure you want to delete this logged item?')) return;
 
     try {
-        const res = await fetch(`/api/meal-items/${itemId}`, {
-            method: 'DELETE'
+        const res = await fetch(`/api/meal-items/${encodeURIComponent(itemId)}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCsrfToken()
+            }
         });
 
         if (res.ok) {

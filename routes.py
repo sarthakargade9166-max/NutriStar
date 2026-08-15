@@ -1,4 +1,7 @@
 import uuid
+import re
+from datetime import datetime, timedelta
+import pytz
 from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify, flash
 from database import db
 from models import User, Profile, Food, MealItem
@@ -14,6 +17,32 @@ from nutrition import (
 from seed_data import seed_foods_if_empty
 
 routes = Blueprint('routes', __name__)
+
+ALLOWED_MEAL_TYPES = {'breakfast', 'lunch', 'snack', 'dinner'}
+ALLOWED_GENDERS = {'male', 'female', 'other'}
+ALLOWED_ACTIVITY_LEVELS = {'sedentary', 'light', 'moderate', 'active', 'very_active'}
+ALLOWED_GOAL_MODES = {'rate', 'timeline'}
+
+
+def validate_date_in_rolling_window(date_str):
+    if not date_str or not re.match(r'^\d{4}-\d{2}-\d{2}$', date_str):
+        return False
+    try:
+        dt = datetime.strptime(date_str, '%Y-%m-%d').date()
+        ist = pytz.timezone('Asia/Kolkata')
+        today_ist = datetime.now(ist).date()
+        oldest_allowed = today_ist - timedelta(days=9)
+        return oldest_allowed <= dt <= today_ist
+    except ValueError:
+        return False
+
+
+def validate_quantity(qty):
+    try:
+        val = float(qty)
+        return 0.01 <= val <= 1000.0
+    except (TypeError, ValueError):
+        return False
 
 
 def get_default_user():
@@ -62,7 +91,8 @@ def inject_global_data():
         'active_date': active_date,
         'current_user': user,
         'user_profile': user.profile,
-        'ist_today': get_ist_today()
+        'ist_today': get_ist_today(),
+        'csrf_token': session.get('csrf_token', '')
     }
 
 
@@ -121,6 +151,8 @@ def log_food():
     user = get_default_user()
     active_date = session.get('active_date') or get_ist_today()
     default_meal = request.args.get('meal') or get_ist_default_meal()
+    if default_meal not in ALLOWED_MEAL_TYPES:
+        default_meal = 'lunch'
 
     if Food.query.count() == 0:
         seed_foods_if_empty()
@@ -172,6 +204,10 @@ def history():
 
 @routes.route('/history/<date_str>')
 def history_day(date_str):
+    if not re.match(r'^\d{4}-\d{2}-\d{2}$', date_str):
+        flash('Invalid date format.', 'error')
+        return redirect(url_for('routes.history'))
+
     user = get_default_user()
     session['active_date'] = date_str
 
@@ -213,16 +249,26 @@ def profile():
 
     if request.method == 'POST':
         try:
-            name = request.form.get('name', 'User')
-            age = int(request.form.get('age', 25))
-            gender = request.form.get('gender', 'male')
-            height = float(request.form.get('height_cm', 175))
-            cur_weight = float(request.form.get('current_weight_kg', 70))
-            tgt_weight = float(request.form.get('target_weight_kg', 70))
-            activity = request.form.get('activity_level', 'moderate')
-            mode = request.form.get('goal_control_mode', 'rate')
-            rate = float(request.form.get('target_rate_kg_per_week', 0.5))
-            weeks = int(request.form.get('target_weeks', 12))
+            name = (request.form.get('name') or 'User').strip()[:50]
+            age = max(10, min(120, int(request.form.get('age', 25))))
+            gender = request.form.get('gender', 'male').lower()
+            if gender not in ALLOWED_GENDERS:
+                gender = 'male'
+
+            height = max(50.0, min(250.0, float(request.form.get('height_cm', 175))))
+            cur_weight = max(20.0, min(300.0, float(request.form.get('current_weight_kg', 70))))
+            tgt_weight = max(20.0, min(300.0, float(request.form.get('target_weight_kg', 70))))
+
+            activity = request.form.get('activity_level', 'moderate').lower()
+            if activity not in ALLOWED_ACTIVITY_LEVELS:
+                activity = 'moderate'
+
+            mode = request.form.get('goal_control_mode', 'rate').lower()
+            if mode not in ALLOWED_GOAL_MODES:
+                mode = 'rate'
+
+            rate = max(0.1, min(1.5, float(request.form.get('target_rate_kg_per_week', 0.5))))
+            weeks = max(1, min(52, int(request.form.get('target_weeks', 12))))
 
             targets = calculate_targets(
                 cur_weight, tgt_weight, height, age, gender, activity,
@@ -248,8 +294,8 @@ def profile():
 
             db.session.commit()
             flash('Profile and nutrition targets updated successfully.', 'success')
-        except Exception as e:
-            flash(f'Error updating profile: {str(e)}', 'error')
+        except (ValueError, TypeError):
+            flash('Invalid input values. Please review your entries.', 'error')
 
     return render_template('profile.html', profile=user_profile)
 
@@ -261,15 +307,25 @@ def onboarding():
 
     if request.method == 'POST':
         try:
-            name = request.form.get('name', 'User')
-            age = int(request.form.get('age', 25))
-            gender = request.form.get('gender', 'male')
-            height = float(request.form.get('height_cm', 175))
-            cur_weight = float(request.form.get('current_weight_kg', 70))
-            tgt_weight = float(request.form.get('target_weight_kg', 70))
-            activity = request.form.get('activity_level', 'moderate')
-            mode = request.form.get('goal_control_mode', 'rate')
-            rate = float(request.form.get('target_rate_kg_per_week', 0.5))
+            name = (request.form.get('name') or 'User').strip()[:50]
+            age = max(10, min(120, int(request.form.get('age', 25))))
+            gender = request.form.get('gender', 'male').lower()
+            if gender not in ALLOWED_GENDERS:
+                gender = 'male'
+
+            height = max(50.0, min(250.0, float(request.form.get('height_cm', 175))))
+            cur_weight = max(20.0, min(300.0, float(request.form.get('current_weight_kg', 70))))
+            tgt_weight = max(20.0, min(300.0, float(request.form.get('target_weight_kg', 70))))
+
+            activity = request.form.get('activity_level', 'moderate').lower()
+            if activity not in ALLOWED_ACTIVITY_LEVELS:
+                activity = 'moderate'
+
+            mode = request.form.get('goal_control_mode', 'rate').lower()
+            if mode not in ALLOWED_GOAL_MODES:
+                mode = 'rate'
+
+            rate = max(0.1, min(1.5, float(request.form.get('target_rate_kg_per_week', 0.5))))
 
             targets = calculate_targets(cur_weight, tgt_weight, height, age, gender, activity, mode, rate)
 
@@ -289,8 +345,8 @@ def onboarding():
 
             db.session.commit()
             return redirect(url_for('routes.dashboard'))
-        except Exception as e:
-            flash(f'Error saving onboarding: {str(e)}', 'error')
+        except (ValueError, TypeError):
+            flash('Invalid input values. Please review your entries.', 'error')
 
     return render_template('onboarding.html', profile=user_profile)
 
@@ -372,11 +428,14 @@ def api_calculate():
     quantity = data.get('quantity', 1.0)
     unit = data.get('unit', 'serving')
 
+    if not validate_quantity(quantity):
+        return jsonify({'error': 'Bad Request', 'message': 'Invalid portion quantity.'}), 400
+
     food = db.session.get(Food, food_id)
     if not food:
         return jsonify({'error': 'Not Found', 'message': 'Food not found.'}), 404
 
-    nutrition = calculate_food_nutrition(food, quantity, unit)
+    nutrition = calculate_food_nutrition(food, float(quantity), str(unit))
     return jsonify(nutrition)
 
 
@@ -386,15 +445,25 @@ def api_log_meal():
     data = request.get_json() or {}
 
     food_id = data.get('food_id')
-    meal_type = data.get('meal_type', 'lunch').lower()
-    quantity = float(data.get('quantity', 1.0))
-    unit = data.get('unit', 'serving')
+    meal_type = str(data.get('meal_type', 'lunch')).lower()
+    quantity_raw = data.get('quantity', 1.0)
+    unit = str(data.get('unit', 'serving'))
     date_str = data.get('date') or session.get('active_date') or get_ist_today()
+
+    if meal_type not in ALLOWED_MEAL_TYPES:
+        return jsonify({'error': 'Bad Request', 'message': 'Invalid meal category.'}), 400
+
+    if not validate_quantity(quantity_raw):
+        return jsonify({'error': 'Bad Request', 'message': 'Invalid quantity. Must be between 0.01 and 1000.'}), 400
+
+    if not validate_date_in_rolling_window(date_str):
+        return jsonify({'error': 'Bad Request', 'message': 'Date must be within the allowable 10-day rolling window.'}), 400
 
     food = db.session.get(Food, food_id)
     if not food:
         return jsonify({'error': 'Not Found', 'message': 'Food item not found.'}), 404
 
+    quantity = float(quantity_raw)
     nutrition = calculate_food_nutrition(food, quantity, unit)
 
     item = MealItem(
@@ -433,12 +502,19 @@ def api_manage_meal_item(item_id):
 
     if request.method == 'PUT':
         data = request.get_json() or {}
-        quantity = float(data.get('quantity', item.quantity))
-        unit = data.get('unit', item.unit)
-        meal_type = data.get('meal_type', item.meal_type).lower()
+        quantity_raw = data.get('quantity', item.quantity)
+        unit = str(data.get('unit', item.unit))
+        meal_type = str(data.get('meal_type', item.meal_type)).lower()
+
+        if meal_type not in ALLOWED_MEAL_TYPES:
+            return jsonify({'error': 'Bad Request', 'message': 'Invalid meal category.'}), 400
+
+        if not validate_quantity(quantity_raw):
+            return jsonify({'error': 'Bad Request', 'message': 'Invalid quantity.'}), 400
 
         food = db.session.get(Food, item.food_id)
         if food:
+            quantity = float(quantity_raw)
             nutrition = calculate_food_nutrition(food, quantity, unit)
             item.quantity = quantity
             item.unit = unit
@@ -460,10 +536,10 @@ def api_active_date():
     if request.method == 'POST':
         data = request.get_json() or {}
         new_date = data.get('date')
-        if new_date:
-            session['active_date'] = new_date
-            return jsonify({'success': True, 'active_date': new_date})
-        return jsonify({'error': 'Invalid date'}), 400
+        if new_date and re.match(r'^\d{4}-\d{2}-\d{2}$', str(new_date)):
+            session['active_date'] = str(new_date)
+            return jsonify({'success': True, 'active_date': str(new_date)})
+        return jsonify({'error': 'Bad Request', 'message': 'Invalid date format (expected YYYY-MM-DD).' }), 400
 
     return jsonify({'active_date': session.get('active_date') or get_ist_today()})
 
@@ -479,20 +555,29 @@ def api_quick_add():
 def api_targets():
     data = request.get_json() or {}
     try:
-        cur_weight = float(data.get('weight_kg', 70))
-        tgt_weight = float(data.get('target_weight_kg', cur_weight))
-        height = float(data.get('height_cm', 175))
-        age = int(data.get('age', 25))
-        gender = data.get('sex', data.get('gender', 'male'))
-        activity = data.get('activity_level', 'moderate')
-        mode = data.get('goal_control_mode', 'rate')
-        rate = float(data.get('target_rate_kg_per_week', 0.5))
-        weeks = int(data.get('target_weeks', 12))
+        cur_weight = max(20.0, min(300.0, float(data.get('weight_kg', 70))))
+        tgt_weight = max(20.0, min(300.0, float(data.get('target_weight_kg', cur_weight))))
+        height = max(50.0, min(250.0, float(data.get('height_cm', 175))))
+        age = max(10, min(120, int(data.get('age', 25))))
+        gender = str(data.get('sex', data.get('gender', 'male'))).lower()
+        if gender not in ALLOWED_GENDERS:
+            gender = 'male'
+
+        activity = str(data.get('activity_level', 'moderate')).lower()
+        if activity not in ALLOWED_ACTIVITY_LEVELS:
+            activity = 'moderate'
+
+        mode = str(data.get('goal_control_mode', 'rate')).lower()
+        if mode not in ALLOWED_GOAL_MODES:
+            mode = 'rate'
+
+        rate = max(0.1, min(1.5, float(data.get('target_rate_kg_per_week', 0.5))))
+        weeks = max(1, min(52, int(data.get('target_weeks', 12))))
 
         targets = calculate_targets(cur_weight, tgt_weight, height, age, gender, activity, mode, rate, weeks)
         return jsonify(targets)
-    except Exception as e:
-        return jsonify({'error': 'Bad Request', 'message': str(e)}), 400
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Bad Request', 'message': 'Invalid input parameters.'}), 400
 
 
 @routes.route('/api/export-data', methods=['GET'])

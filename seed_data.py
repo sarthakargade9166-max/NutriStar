@@ -1,5 +1,5 @@
 from database import db
-from models import Food, User, Profile
+from models import Food
 from data.foods import FOODS
 
 def seed_foods_if_empty():
