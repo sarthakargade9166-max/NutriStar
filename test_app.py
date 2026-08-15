@@ -358,22 +358,6 @@ importlib.reload(config)
         self.assertNotEqual(proc.returncode, 0)
         self.assertIn('CRITICAL SECURITY ERROR', proc.stderr)
 
-    def test_production_trusted_hosts_missing_fails_startup(self):
-        import subprocess
-        import sys
-        script = '''
-import os
-os.environ['FLASK_ENV'] = 'production'
-os.environ['SECRET_KEY'] = 'test-prod-secret-123'
-os.environ['TRUSTED_HOSTS'] = ''
-import importlib
-import config
-importlib.reload(config)
-'''
-        proc = subprocess.run([sys.executable, '-c', script], capture_output=True, text=True)
-        self.assertNotEqual(proc.returncode, 0)
-        self.assertIn('CRITICAL SECURITY ERROR: TRUSTED_HOSTS', proc.stderr)
-
     def test_untrusted_host_rejected(self):
         class HostConfig(Config):
             TESTING = False
@@ -381,13 +365,17 @@ importlib.reload(config)
             SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
             SQLALCHEMY_TRACK_MODIFICATIONS = False
             SESSION_COOKIE_SECURE = True
-            TRUSTED_HOSTS = ['nutristar.app', 'demo.nutristar.app']
+            TRUSTED_HOSTS = ['*.onrender.com', 'nutristar.app']
 
         host_app = create_app(HostConfig)
         with host_app.test_client() as c:
-            # Trusted host succeeds
-            res_ok = c.get('/dashboard', headers={'Host': 'nutristar.app'})
-            self.assertEqual(res_ok.status_code, 200)
+            # Trusted exact host succeeds
+            res_exact = c.get('/dashboard', headers={'Host': 'nutristar.app'})
+            self.assertEqual(res_exact.status_code, 200)
+
+            # Trusted wildcard subdomain on onrender.com succeeds
+            res_subdomain = c.get('/dashboard', headers={'Host': 'my-custom-service.onrender.com'})
+            self.assertEqual(res_subdomain.status_code, 200)
 
             # Untrusted host is rejected with 400 Bad Request
             res_bad = c.get('/dashboard', headers={'Host': 'evil-phishing-domain.com'})

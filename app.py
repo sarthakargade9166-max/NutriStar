@@ -1,13 +1,34 @@
 import os
 import secrets
 from flask import Flask, jsonify, request, session, render_template
+from werkzeug.middleware.proxy_fix import ProxyFix
 from config import Config
 from database import db
+
+
+def is_host_allowed(req_host, allowed_list):
+    req_host = req_host.lower().strip()
+    for pattern in allowed_list:
+        p = pattern.lower().strip()
+        if p == '*' or req_host == p:
+            return True
+        if p.startswith('*.'):
+            suffix = p[2:]
+            if req_host == suffix or req_host.endswith('.' + suffix):
+                return True
+        elif p.startswith('.'):
+            suffix = p[1:]
+            if req_host == suffix or req_host.endswith('.' + suffix):
+                return True
+    return False
 
 
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
+
+    # Enable proxy header support (X-Forwarded-For, X-Forwarded-Proto, X-Forwarded-Host) for Render & Gunicorn
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
     os.makedirs(app.instance_path, exist_ok=True)
 
@@ -21,9 +42,8 @@ def create_app(config_class=Config):
         trusted = app.config.get('TRUSTED_HOSTS')
         if trusted and not app.config.get('TESTING'):
             req_host = request.host.split(':')[0].lower()
-            allowed = [h.lower() for h in trusted]
-            if req_host not in allowed:
-                return jsonify({'error': 'Bad Request', 'message': 'Untrusted host header.'}), 400
+            if not is_host_allowed(req_host, trusted):
+                return jsonify({'error': 'Bad Request', 'message': f'Untrusted host header: {req_host}'}), 400
 
     @app.before_request
     def manage_csrf():

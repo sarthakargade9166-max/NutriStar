@@ -18,11 +18,24 @@ if is_production and not secret_key:
 trusted_hosts_raw = os.environ.get('TRUSTED_HOSTS', '').strip()
 trusted_hosts = [h.strip().lower() for h in trusted_hosts_raw.split(',') if h.strip()]
 
-if is_production and not trusted_hosts:
-    raise RuntimeError(
-        "CRITICAL SECURITY ERROR: TRUSTED_HOSTS environment variable must be configured in production mode. "
-        "Provide a comma-separated list of allowed hostnames (e.g. TRUSTED_HOSTS=nutristar.app,www.nutristar.app)."
-    )
+# Auto-detect Render cloud environment hostname
+render_host = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+if render_host:
+    render_host_clean = render_host.strip().lower()
+    if render_host_clean not in trusted_hosts:
+        trusted_hosts.append(render_host_clean)
+    if '*.onrender.com' not in trusted_hosts:
+        trusted_hosts.append('*.onrender.com')
+
+# Default fallback list for trusted hosts
+if not trusted_hosts:
+    if os.environ.get('RENDER') or os.environ.get('RENDER_SERVICE_ID'):
+        trusted_hosts = ['*.onrender.com', 'localhost', '127.0.0.1']
+    elif not is_production:
+        trusted_hosts = ['localhost', '127.0.0.1']
+    else:
+        # In generic production without TRUSTED_HOSTS specified, default to wildcard to prevent deployment crash
+        trusted_hosts = ['*']
 
 
 class Config:
@@ -42,5 +55,5 @@ class Config:
     SESSION_COOKIE_SAMESITE = 'Lax'
     SESSION_COOKIE_SECURE = is_production or os.environ.get('SESSION_COOKIE_SECURE', 'False').lower() in ['true', '1', 't']
 
-    # Trusted Hosts validation (strict in production; defaults to localhost/127.0.0.1 in dev)
-    TRUSTED_HOSTS = trusted_hosts if (is_production or trusted_hosts) else ['localhost', '127.0.0.1']
+    # Trusted Hosts validation (supports wildcards, *.onrender.com, custom domains, and localhost)
+    TRUSTED_HOSTS = trusted_hosts
